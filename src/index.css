@@ -6,6 +6,7 @@
   html {
     scroll-behavior: smooth;
   }
+
   body {
     @apply bg-primary-dark text-white font-sans antialiased;
   }
@@ -15,6 +16,7 @@
   .bg-hero-gradient {
     background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
   }
+
   .text-gradient {
     background: linear-gradient(90deg, #3B82F6, #8B5CF6);
     -webkit-background-clip: text;

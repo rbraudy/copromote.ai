@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import Modal from '../UI/Modal';
+import { auth, db } from '../../lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface SignUpModalProps {
     isOpen: boolean;
@@ -12,24 +15,40 @@ const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose }) => {
         businessEmail: '',
         storeUrl: ''
     });
+    const [loading, setLoading] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setLoading(true);
 
-        // Simulate saving to database (localStorage)
-        const existingUsers = JSON.parse(localStorage.getItem('copromote_users') || '[]');
-        existingUsers.push(formData);
-        localStorage.setItem('copromote_users', JSON.stringify(existingUsers));
+        try {
+            // 1. Create User in Firebase Auth (using a default password for this demo flow)
+            const userCredential = await createUserWithEmailAndPassword(auth, formData.businessEmail, "copromote123");
+            const user = userCredential.user;
 
-        console.log('User Registered:', formData);
-        alert(`Welcome to CoPromote.ai, ${formData.businessName}! Your account has been created.`);
-        onClose();
-        setFormData({ businessName: '', businessEmail: '', storeUrl: '' });
+            // 2. Save additional details to Firestore
+            await setDoc(doc(db, "users", user.uid), {
+                businessName: formData.businessName,
+                businessEmail: formData.businessEmail,
+                storeUrl: formData.storeUrl,
+                createdAt: new Date().toISOString()
+            });
+
+            console.log('User Registered:', user.uid);
+            alert(`Welcome to CoPromote.ai, ${formData.businessName}! Your account has been created.`);
+            onClose();
+            setFormData({ businessName: '', businessEmail: '', storeUrl: '' });
+        } catch (error: any) {
+            console.error("Error signing up:", error);
+            alert(`Error: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -85,9 +104,10 @@ const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose }) => {
 
                 <button
                     type="submit"
-                    className="w-full py-3 mt-4 bg-accent-blue text-white font-bold rounded-lg hover:bg-accent-purple transition duration-300 transform hover:scale-[1.02]"
+                    disabled={loading}
+                    className="w-full py-3 mt-4 bg-accent-blue text-white font-bold rounded-lg hover:bg-accent-purple transition duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Create Account
+                    {loading ? 'Creating Account...' : 'Create Account'}
                 </button>
             </form>
         </Modal>
