@@ -2,10 +2,10 @@ import React from 'react';
 
 const Hero: React.FC = () => {
     return (
-        <section className="bg-hero-gradient pt-20 pb-24 text-center">
+        <section className="bg-hero-gradient pt-32 pb-24 text-center">
             <div className="max-w-4xl mx-auto px-6">
                 {/* Headline */}
-                <h2 className="text-6xl md:text-7xl font-extrabold leading-tight tracking-tighter mb-6">
+                <h2 className="text-6xl md:text-7xl font-extrabold leading-tight tracking-tighter mb-6 text-white">
                     Cross-Catalog Promotions,
                     <span className="text-gradient block">Instantly Generated.</span>
                 </h2>
