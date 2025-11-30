@@ -39,7 +39,7 @@ export const fetchWooCommerceProducts = async (
 
             const batchProducts: Product[] = data.map((p: any) => ({
                 id: p.id.toString(),
-                userId: '',
+                user_id: '',
                 name: p.name,
                 description: (p.description || '').replace(/<[^>]*>?/gm, ''),
                 price: parseFloat(p.price || '0'),

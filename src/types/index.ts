@@ -1,6 +1,7 @@
 export interface Product {
     id?: string;
     userId: string;
+    user_id?: string; // snake_case column name for Supabase
     name: string;
     description: string;
     price: number;

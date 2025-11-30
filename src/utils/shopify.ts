@@ -36,29 +36,78 @@ export const fetchShopifyProducts = async (
         url = url.slice(0, -1);
     }
 
-    // Use the 'all' collection endpoint which often bypasses the 250 limit on the root products.json
-    const baseProductsUrl = `${url}/collections/all/products.json`;
+    // Try the 'all' collection endpoint first, then fallback to root products.json
+    const endpoints = [
+        `${url}/collections/all/products.json`,
+        `${url}/products.json`
+    ];
+
     let allProducts: Product[] = [];
     let page = 1;
-    const limit = 50; // Reduced to 50 for better reliability and frequent updates
+    const limit = 10; // Reduced to 10 to prevent Firestore write timeouts
     let hasMorePages = true;
     let totalCount = 0;
 
-    try {
-        // Try to fetch total count first
-        try {
-            const countResponse = await fetch(`${url}/products/count.json`);
-            if (countResponse.ok) {
-                const countData = await countResponse.json();
-                totalCount = countData.count || 0;
-                console.log(`Total products to sync: ${totalCount}`);
+    // Helper to fetch with CORS proxy fallback
+    const fetchWithFallback = async (targetUrl: string, options?: RequestInit) => {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        // Skip direct fetch on localhost to avoid CORS errors and save time
+        if (!isLocalhost) {
+            try {
+                const res = await fetch(targetUrl, options);
+                if (res.ok) return res;
+            } catch (err) {
+                console.warn(`Direct fetch failed for ${targetUrl}, switching to proxy.`);
             }
-        } catch (e) {
-            console.warn('Could not fetch product count, defaulting to unknown');
+        } else {
+            console.log('Localhost detected, skipping direct fetch to avoid CORS errors.');
         }
 
+        // Proxy Strategy 1: corsproxy.io (Primary)
+        try {
+            console.log(`Attempting proxy: corsproxy.io for ${targetUrl}`);
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+            const res = await fetch(proxyUrl, options);
+            if (res.ok) return res;
+            console.warn(`CorsProxy returned status ${res.status}`);
+        } catch (err) {
+            console.warn(`CorsProxy failed, trying backup...`, err);
+        }
+
+        // Proxy Strategy 2: allorigins (Backup)
+        try {
+            console.log(`Attempting proxy: allorigins for ${targetUrl}`);
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+            const res = await fetch(proxyUrl, options);
+            if (res.ok) return res;
+            throw new Error(`Status ${res.status}`);
+        } catch (err) {
+            console.error(`All fetch strategies failed for ${targetUrl}`);
+            throw err;
+        }
+    };
+
+    let activeEndpoint = endpoints[0];
+
+    try {
+        // Check if the first endpoint works (using proxy fallback)
+        try {
+            const checkUrl = `${activeEndpoint}?limit=1`;
+            const checkResponse = await fetchWithFallback(checkUrl, { method: 'HEAD' });
+            if (!checkResponse.ok) {
+                console.warn(`Endpoint ${activeEndpoint} returned ${checkResponse.status}, trying fallback...`);
+                activeEndpoint = endpoints[1];
+            }
+        } catch (e) {
+            console.warn(`Error checking endpoint ${activeEndpoint}, trying fallback...`, e);
+            activeEndpoint = endpoints[1];
+        }
+
+        console.log(`Using Shopify endpoint: ${activeEndpoint}`);
+
         while (hasMorePages) {
-            const productsUrl = `${baseProductsUrl}?limit=${limit}&page=${page}`;
+            const productsUrl = `${activeEndpoint}?limit=${limit}&page=${page}`;
             console.log(`Fetching Shopify page ${page}...`);
             if (onStatus) onStatus(`Syncing... (Fetching page ${page})`);
 
@@ -70,7 +119,7 @@ export const fetchShopifyProducts = async (
 
             while (retries > 0 && !success) {
                 try {
-                    const response = await fetch(productsUrl, {
+                    const response = await fetchWithFallback(productsUrl, {
                         signal: controller.signal
                     });
 
@@ -91,18 +140,20 @@ export const fetchShopifyProducts = async (
 
                     const batchProducts: Product[] = data.products.map((p) => {
                         const firstVariant = p.variants?.[0];
+                        const price = firstVariant?.price ? parseFloat(firstVariant.price) : 0;
+
                         return {
                             id: p.id.toString(), // Keep original ID for reference
-                            userId: '', // Will be filled by the caller
+                            user_id: '', // Will be filled by the caller
                             name: p.title || 'Unnamed Product',
                             description: (p.body_html || '').replace(/<[^>]*>?/gm, '').slice(0, 150) + '...',
-                            price: firstVariant?.price ? parseFloat(firstVariant.price) : 0,
+                            price: isNaN(price) ? 0 : price, // Ensure no NaN values
                             imageUrl: p.images?.[0]?.src || firstVariant?.image_src || 'https://placehold.co/300x300?text=No+Image',
                             originalStoreUrl: `${url}/products/${p.handle}`,
                             category: p.product_type || null,
                             brand: p.vendor || null,
                             sku: firstVariant?.sku || null,
-                            shopifyProductId: p.id ? String(p.id) : null,
+                            shopifyProductId: p.id ? String(p.id) : undefined,
                             platform: 'shopify' as const,
                             createdAt: p.created_at,
                             updatedAt: p.updated_at
