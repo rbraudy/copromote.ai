@@ -26,6 +26,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
     // Pagination state
     const [lastVisible, setLastVisible] = useState<any>(null);
     const [hasMore, setHasMore] = useState(true);
+    const [visibleCount, setVisibleCount] = useState(20); // Limit rendered items for performance
     const PRODUCTS_PER_PAGE = 20;
 
     useEffect(() => {
@@ -77,57 +78,81 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
             const platform = await detectPlatform(url);
             let fetchedProducts: Product[] = [];
 
-            const onBatch = async (batch: Product[], _page: number, totalSoFar: number) => {
+            const onBatch = async (batch: Product[], _page: number, totalSoFar: number, totalCount?: number) => {
+                // Auto-minimize modal immediately so user can work
+                if (totalSoFar > 0) {
+                    setIsSyncModalOpen(false);
+                }
+
                 setSyncStatus(`Syncing... (${totalSoFar} products found)`);
-                setSyncProgress(prev => ({ ...prev, current: totalSoFar }));
+                setSyncProgress(prev => ({
+                    current: totalSoFar,
+                    total: totalCount || prev.total || 0
+                }));
 
-                const batchWrite = writeBatch(db);
-                const newProducts: Product[] = [];
+                try {
+                    const batchWrite = writeBatch(db);
+                    const newProducts: Product[] = [];
 
-                batch.forEach(p => {
-                    // Deterministic ID: uid_platform_externalId
-                    let externalId = p.shopifyProductId;
-                    if (!externalId && p.platform === 'woocommerce') {
-                        externalId = p.id;
-                    }
+                    batch.forEach(p => {
+                        // Deterministic ID: uid_platform_externalId
+                        let externalId = p.shopifyProductId;
+                        if (!externalId && p.platform === 'woocommerce') {
+                            externalId = p.id;
+                        }
 
-                    let docRef;
-                    if (externalId && p.platform) {
-                        const safeId = `${user.uid}_${p.platform}_${externalId}`;
-                        docRef = doc(db, "products", safeId);
-                    } else {
-                        docRef = doc(collection(db, "products"));
-                    }
+                        let docRef;
+                        if (externalId && p.platform) {
+                            const safeId = `${user.uid}_${p.platform}_${externalId}`;
+                            docRef = doc(db, "products", safeId);
+                        } else {
+                            docRef = doc(collection(db, "products"));
+                        }
 
-                    const productData = {
-                        ...p,
-                        userId: user.uid,
-                        updatedAt: new Date().toISOString(),
-                        createdAt: p.createdAt || new Date().toISOString()
-                    };
-                    batchWrite.set(docRef, productData);
-                    newProducts.push({ id: docRef.id, ...productData } as Product);
-                });
+                        const productData = {
+                            ...p,
+                            userId: user.uid,
+                            updatedAt: new Date().toISOString(),
+                            createdAt: p.createdAt || new Date().toISOString()
+                        };
+                        batchWrite.set(docRef, productData);
+                        newProducts.push({ id: docRef.id, ...productData } as Product);
+                    });
 
-                await batchWrite.commit();
+                    console.log(`Committing batch of ${batch.length} products...`);
+                    await batchWrite.commit();
+                    console.log('Batch committed successfully.');
 
-                // Update local state
-                setProducts(prev => {
-                    const existingIds = new Set(prev.map(p => p.id));
-                    const uniqueNew = newProducts.filter(p => !existingIds.has(p.id));
-                    return [...prev, ...uniqueNew];
-                });
+                    // Update local state
+                    setProducts(prev => {
+                        const existingIds = new Set(prev.map(p => p.id));
+                        const uniqueNew = newProducts.filter(p => !existingIds.has(p.id));
+                        return [...prev, ...uniqueNew];
+                    });
+                } catch (batchError) {
+                    console.error('Error saving batch:', batchError);
+                    setSyncStatus('Error saving products. Retrying...');
+                    throw batchError; // Propagate to shopify.ts to trigger retry/fail
+                }
             };
 
             if (platform === 'shopify') {
                 setSyncStatus('Shopify detected. Fetching products...');
-                fetchedProducts = await fetchShopifyProducts(url, onBatch);
+                fetchedProducts = await fetchShopifyProducts(
+                    url,
+                    onBatch,
+                    (status) => setSyncStatus(status)
+                );
             } else if (platform === 'woocommerce') {
                 setSyncStatus('WooCommerce detected. Fetching products...');
                 fetchedProducts = await fetchWooCommerceProducts(url, onBatch);
             } else {
                 setSyncStatus('Platform unknown. Trying generic fetch...');
-                fetchedProducts = await fetchShopifyProducts(url, onBatch);
+                fetchedProducts = await fetchShopifyProducts(
+                    url,
+                    onBatch,
+                    (status) => setSyncStatus(status)
+                );
                 if (fetchedProducts.length === 0) {
                     fetchedProducts = await fetchWooCommerceProducts(url, onBatch);
                 }
@@ -245,17 +270,26 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
                 </div>
             </div>
 
-            {/* Sync Status */}
-            {syncing && (
-                <div className="mb-6 p-4 bg-accent-purple/10 border border-accent-purple/20 rounded-lg">
-                    <div className="flex items-center gap-3 text-accent-purple mb-2">
-                        <RefreshCw className="animate-spin" size={20} />
-                        <span className="font-medium">{syncStatus}</span>
+
+
+            {/* Background Sync Indicator */}
+            {syncing && !isSyncModalOpen && (
+                <div className="fixed bottom-6 right-6 bg-secondary-dark border border-accent-purple/30 p-4 rounded-lg shadow-lg z-50 w-80 animate-slide-in">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 text-white font-medium">
+                            <RefreshCw className="animate-spin text-accent-purple" size={16} />
+                            <span>Syncing...</span>
+                        </div>
+                        <span className="text-xs text-slate-400">
+                            {syncProgress.total > 0
+                                ? `${syncProgress.current} / ${syncProgress.total}`
+                                : `${syncProgress.current} scanned`} products
+                        </span>
                     </div>
                     {syncProgress.total > 0 && (
-                        <div className="w-full bg-slate-700 rounded-full h-2">
+                        <div className="w-full bg-slate-700 rounded-full h-1.5">
                             <div
-                                className="bg-accent-purple h-2 rounded-full transition-all duration-300"
+                                className="bg-accent-purple h-1.5 rounded-full transition-all duration-300"
                                 style={{ width: `${(syncProgress.current / syncProgress.total) * 100}%` }}
                             />
                         </div>
@@ -267,7 +301,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
             {filteredProducts.length > 0 ? (
                 viewMode === 'grid' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                        {filteredProducts.map((product) => (
+                        {filteredProducts.slice(0, visibleCount).map((product) => (
                             <div key={product.id} className="bg-secondary-dark border border-slate-700 rounded-xl overflow-hidden hover:border-accent-purple/50 transition-colors group">
                                 <div className="aspect-square relative overflow-hidden bg-slate-800">
                                     {product.imageUrl ? (
@@ -304,7 +338,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-700">
-                                {filteredProducts.map((product) => (
+                                {filteredProducts.slice(0, visibleCount).map((product) => (
                                     <tr key={product.id} className="hover:bg-slate-700/50 transition-colors">
                                         <td className="p-4">
                                             <div className="flex items-center gap-3">
@@ -348,10 +382,16 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
             )}
 
             {/* Load More */}
-            {hasMore && products.length > 0 && !loading && (
+            {(hasMore || visibleCount < filteredProducts.length) && !loading && (
                 <div className="mt-8 text-center">
                     <button
-                        onClick={() => fetchProducts(true)}
+                        onClick={() => {
+                            if (visibleCount < filteredProducts.length) {
+                                setVisibleCount(prev => prev + 20);
+                            } else {
+                                fetchProducts(true);
+                            }
+                        }}
                         className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
                     >
                         Load More
@@ -360,7 +400,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
             )}
 
             {/* Sync Modal */}
-            <Modal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} title="Sync Store">
+            <Modal isOpen={isSyncModalOpen} onClose={() => !syncing && setIsSyncModalOpen(false)} title="Sync Store">
                 <form onSubmit={handleSyncStore} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-1">Store URL</label>
@@ -369,14 +409,42 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
                             value={storeUrl}
                             onChange={(e) => setStoreUrl(e.target.value)}
                             placeholder="e.g., mystore.com"
-                            className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-accent-purple"
+                            className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-accent-purple disabled:opacity-50"
+                            disabled={syncing}
                         />
                     </div>
+
+                    {/* Sync Status inside Modal */}
+                    {syncing && (
+                        <div className="p-4 bg-accent-purple/10 border border-accent-purple/20 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3 text-accent-purple">
+                                    <RefreshCw className="animate-spin" size={20} />
+                                    <span className="font-medium">{syncStatus}</span>
+                                </div>
+                                <span className="text-sm text-slate-400">
+                                    {syncProgress.total > 0
+                                        ? `${syncProgress.current} / ${syncProgress.total}`
+                                        : `${syncProgress.current} scanned`}
+                                </span>
+                            </div>
+                            {syncProgress.total > 0 && (
+                                <div className="w-full bg-slate-700 rounded-full h-2">
+                                    <div
+                                        className="bg-accent-purple h-2 rounded-full transition-all duration-300"
+                                        style={{ width: `${(syncProgress.current / syncProgress.total) * 100}%` }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="flex justify-end gap-3 mt-6">
                         <button
                             type="button"
                             onClick={() => setIsSyncModalOpen(false)}
                             className="px-4 py-2 text-slate-300 hover:text-white transition-colors"
+                            disabled={syncing}
                         >
                             Cancel
                         </button>
