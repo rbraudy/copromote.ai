@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { X, Save, Loader2, ArrowRight, MessageSquare } from 'lucide-react';
+import { X, Save, Loader2, ArrowRight } from 'lucide-react';
 
 interface ProposalDetailProps {
     isOpen: boolean;

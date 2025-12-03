@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { FileText, ExternalLink, Trash2, Edit, Check, Search, Loader2, Share2 } from 'lucide-react';
 import { ProposalDetail } from './ProposalDetail';
