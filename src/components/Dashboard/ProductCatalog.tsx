@@ -198,7 +198,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
     // 6️⃣ Render
     // ---------------------------------------------------------------
     return (
-        <div className="p-6 max-w-7xl mx-auto pt-24">
+        <div className="p-6 max-w-7xl mx-auto">
             {debugLog && (
                 <pre className="fixed top-20 left-4 z-50 bg-black/80 text-green-400 p-4 rounded max-w-md max-h-96 overflow-auto text-xs font-mono border border-green-500/30 pointer-events-none">
                     {debugLog}
@@ -216,6 +216,18 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
                     </button>
                     <button onClick={handleClearCatalog} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition-colors" title="Clear Catalog">
                         <Trash2 size={20} />
+                    </button>
+                    <button onClick={async () => {
+                        try {
+                            const { data, error } = await supabase.functions.invoke('enrichProducts', { method: 'POST' });
+                            if (error) throw error;
+                            alert(`Enrichment Started! ${data.message}`);
+                            fetchProducts(); // Refresh to see changes (eventually)
+                        } catch (e: any) {
+                            alert(`Enrichment Failed: ${e.message}`);
+                        }
+                    }} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
+                        Enrich Catalog
                     </button>
                     <button onClick={async () => {
                         try {

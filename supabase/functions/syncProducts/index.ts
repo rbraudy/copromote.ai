@@ -59,6 +59,18 @@ serve(async (req) => {
 
         if (error) throw error
 
+        // 6. Trigger Auto-Enrichment (Fire and Forget)
+        // We don't await this because we don't want to delay the sync response.
+        // We pass the Authorization header so the function has permission to run.
+        console.log('Triggering auto-enrichment...')
+        fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/enrichProducts`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY')}`,
+                'Content-Type': 'application/json'
+            }
+        }).catch(err => console.error('Failed to trigger enrichment:', err))
+
         return new Response(
             JSON.stringify({
                 message: 'Sync successful',

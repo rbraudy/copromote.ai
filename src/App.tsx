@@ -10,6 +10,7 @@ import CTA from './components/Sections/CTA';
 import SignInModal from './components/Auth/SignInModal';
 import SignUpModal from './components/Auth/SignUpModal';
 import ProductCatalog from './components/Dashboard/ProductCatalog';
+import { Leads } from './components/Dashboard/Leads';
 
 function App() {
     const [user, setUser] = useState<User | null>(null);
@@ -37,6 +38,8 @@ function App() {
     // Removed blocking loader to show app shell immediately
     // if (loading) { ... }
 
+    const [activeTab, setActiveTab] = useState<'products' | 'leads'>('products');
+
     return (
         <div className="min-h-screen flex flex-col">
             <Header
@@ -47,7 +50,29 @@ function App() {
             />
             <main className="flex-grow">
                 {user ? (
-                    <ProductCatalog user={user} />
+                    <div className="container mx-auto px-4 pt-24 pb-8">
+                        {/* Dashboard Tabs */}
+                        <div className="flex gap-4 mb-6 border-b">
+                            <button
+                                onClick={() => setActiveTab('products')}
+                                className={`pb-2 px-4 ${activeTab === 'products' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
+                            >
+                                My Products
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('leads')}
+                                className={`pb-2 px-4 ${activeTab === 'leads' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
+                            >
+                                Promotions
+                            </button>
+                        </div>
+
+                        {activeTab === 'products' ? (
+                            <ProductCatalog user={user} />
+                        ) : (
+                            <Leads user={user} />
+                        )}
+                    </div>
                 ) : (
                     <>
                         <Hero />
