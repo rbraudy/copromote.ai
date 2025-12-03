@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Copy, Mail, MessageSquare, Check, Save, Loader2, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { X, Copy, Mail, MessageSquare, Check, Save, Loader2, Image as ImageIcon, Phone } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 interface ShareProposalModalProps {
     isOpen: boolean;
@@ -16,7 +16,7 @@ export const ShareProposalModal = ({ isOpen, onClose, lead, onUpdate, initialSel
     const [phone, setPhone] = useState(lead?.phone || '');
     const [isSaving, setIsSaving] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
-    const [copiedPrompt, setCopiedPrompt] = useState(false);
+    const [isCalling, setIsCalling] = useState(false);
 
     // Selection State
     const [proposals, setProposals] = useState<any[]>([]);
@@ -146,21 +146,45 @@ export const ShareProposalModal = ({ isOpen, onClose, lead, onUpdate, initialSel
         });
     };
 
-    const handleCopyPrompt = () => {
-        handleAction(() => {
-            const prompt = `Draft a professional partnership proposal email for ${lead.company_name}. 
-            
-Key details:
-- We have created a custom bundle proposal for them.
-- Link to proposal: ${shareUrl}
-- Goal: Invite them to review and approve the co-promotion.
-- Tone: Professional, collaborative, and excited.
+    const handleCall = async () => {
+        if (!phone) {
+            alert('Please enter a phone number first.');
+            return;
+        }
 
-Please write a subject line and a concise email body.`;
-            navigator.clipboard.writeText(prompt);
-            setCopiedPrompt(true);
-            setTimeout(() => setCopiedPrompt(false), 2000);
-        });
+        // 1. Save contact info if changed
+        if (hasChanges) {
+            await handleSaveContact();
+        }
+
+        // 2. Get the first selected proposal to pitch
+        const firstSelectedId = Array.from(selectedIds)[0];
+        const proposalToPitch = proposals.find(p => p.id === firstSelectedId);
+
+        if (!proposalToPitch) return;
+
+        if (!confirm(`Call ${lead.company_name} about "${proposalToPitch.offer_details.title}"?`)) return;
+
+        setIsCalling(true);
+        try {
+            const { data, error } = await supabase.functions.invoke('make-call', {
+                body: {
+                    leadId: lead.id,
+                    proposalId: proposalToPitch.id
+                }
+            });
+
+            if (error) throw error;
+            if (data && data.error) throw new Error(data.error);
+
+            alert('Call initiated! The AI agent is dialing now.');
+            onUpdate(); // Refresh to show call status if needed
+        } catch (err: any) {
+            console.error('Error making call:', err);
+            alert(`Failed to start call: ${err.message}`);
+        } finally {
+            setIsCalling(false);
+        }
     };
 
     const handleEmail = () => {
@@ -355,12 +379,13 @@ Please write a subject line and a concise email body.`;
                         </button>
 
                         <button
-                            onClick={handleCopyPrompt}
-                            disabled={selectedIds.size === 0}
+                            onClick={handleCall}
+                            disabled={!phone || selectedIds.size === 0 || isCalling}
                             className="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={!phone ? "Add phone above to call" : ""}
                         >
-                            {copiedPrompt ? <Check className="text-green-600" size={24} /> : <Sparkles className="text-gray-600 group-hover:text-purple-600" size={24} />}
-                            <span className="text-sm font-medium text-gray-900">AI Prompt</span>
+                            {isCalling ? <Loader2 className="animate-spin text-purple-600" size={24} /> : <Phone className="text-gray-600 group-hover:text-purple-600" size={24} />}
+                            <span className="text-sm font-medium text-gray-900">AI Pitch</span>
                         </button>
 
                         <button

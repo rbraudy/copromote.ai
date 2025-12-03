@@ -65,7 +65,7 @@ function DashboardLayout() {
                                 onClick={() => setActiveTab('proposals')}
                                 className={`pb-2 px-4 ${activeTab === 'proposals' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
                             >
-                                Proposals
+                                Promotions
                             </button>
                         </div>
 

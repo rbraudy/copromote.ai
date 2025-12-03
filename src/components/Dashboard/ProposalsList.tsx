@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FileText, ExternalLink, Trash2, Edit, Check, Search, Loader2, Share2 } from 'lucide-react';
+import { FileText, ExternalLink, Trash2, Edit, Check, Search, Loader2, Share2, Phone, ChevronDown } from 'lucide-react';
 import { ProposalDetail } from './ProposalDetail';
 import { ShareProposalModal } from './ShareProposalModal';
 
@@ -44,6 +44,12 @@ export const ProposalsList = ({ user }: ProposalsListProps) => {
                         phone,
                         first_name,
                         last_name
+                    ),
+                    call_logs (
+                        id,
+                        status,
+                        outcome,
+                        created_at
                     )
 
                 `)
@@ -95,6 +101,18 @@ export const ProposalsList = ({ user }: ProposalsListProps) => {
             return newSet;
         });
     };
+
+    // Auto-select all proposals when loaded
+    useEffect(() => {
+        if (proposals.length > 0) {
+            const allIds = new Set(proposals.map(p => p.id));
+            setSelectedProposalIds(allIds);
+        }
+    }, [proposals]);
+
+
+
+
 
     // Filter proposals first
     const filteredProposals = proposals.filter(p =>
@@ -187,13 +205,14 @@ export const ProposalsList = ({ user }: ProposalsListProps) => {
             {/* Partners Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {(Object.values(groupedProposals) as { lead: any, items: any[] }[]).map(({ lead, items }) => {
-                    const isExpanded = expandedPartners.includes(lead?.id || 'unknown');
+                    const partnerName = lead?.id || 'unknown';
+                    const isExpanded = expandedPartners.includes(partnerName);
                     const hasMore = items.length > 1;
                     const displayItems = isExpanded ? items : [items[0]];
 
                     return (
                         <div
-                            key={lead?.id || 'unknown'}
+                            key={partnerName}
                             className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-300 ${isExpanded ? 'xl:col-span-3 md:col-span-2' : 'col-span-1'}`}
                         >
                             {/* Partner Header */}
@@ -205,16 +224,32 @@ export const ProposalsList = ({ user }: ProposalsListProps) => {
                                     </a>
                                 </div>
                                 <div className="flex items-center gap-2">
+
                                     <button
                                         onClick={() => {
                                             setShareLead(lead);
                                             setShareModalOpen(true);
+                                            // Ensure current selection is passed, or default to all for this partner if none selected
+                                            const partnerProposalIds = new Set(items.map(p => p.id));
+                                            const selectedForPartner = new Set([...selectedProposalIds].filter(id => partnerProposalIds.has(id)));
+                                            if (selectedForPartner.size === 0) {
+                                                // If nothing selected for this partner, select all
+                                                setSelectedProposalIds(prev => new Set([...prev, ...partnerProposalIds]));
+                                            }
                                         }}
                                         className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                                     >
                                         <Share2 size={16} />
                                         Share
                                     </button>
+                                    {hasMore && (
+                                        <button
+                                            onClick={() => togglePartnerExpand(partnerName)}
+                                            className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                        >
+                                            <ChevronDown size={20} className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -307,14 +342,26 @@ export const ProposalsList = ({ user }: ProposalsListProps) => {
                                                             <Edit size={14} />
                                                             Edit Proposal
                                                         </button>
+
                                                         <button
                                                             onClick={() => handleDelete(proposal.id)}
-                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
                                                             title="Delete"
                                                         >
                                                             <Trash2 size={18} />
                                                         </button>
                                                     </div>
+
+                                                    {/* Call Status Display */}
+                                                    {proposal.call_logs?.[0] && (
+                                                        <div className="mt-3 text-xs flex items-center gap-1.5 text-gray-500 bg-gray-50 p-2 rounded border border-gray-100">
+                                                            <Phone size={12} className={proposal.call_logs[0].status === 'ended' ? 'text-green-500' : 'text-blue-500'} />
+                                                            <span className="font-medium capitalize">{proposal.call_logs[0].status}:</span>
+                                                            <span className="truncate max-w-[150px]" title={proposal.call_logs[0].outcome || proposal.call_logs[0].transcript}>
+                                                                {proposal.call_logs[0].outcome || 'Calling...'}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -324,7 +371,7 @@ export const ProposalsList = ({ user }: ProposalsListProps) => {
                                     {!isExpanded && hasMore && (
                                         <div className="flex items-center justify-center">
                                             <button
-                                                onClick={() => togglePartnerExpand(lead?.id || 'unknown')}
+                                                onClick={() => togglePartnerExpand(partnerName)}
                                                 className="flex flex-col items-center gap-2 text-gray-500 hover:text-blue-600 transition-colors group p-4"
                                             >
                                                 <div className="w-12 h-12 rounded-full bg-gray-100 group-hover:bg-blue-50 flex items-center justify-center transition-colors">
@@ -339,7 +386,7 @@ export const ProposalsList = ({ user }: ProposalsListProps) => {
                                 {isExpanded && (
                                     <div className="mt-6 flex justify-center border-t border-gray-100 pt-4">
                                         <button
-                                            onClick={() => togglePartnerExpand(lead?.id || 'unknown')}
+                                            onClick={() => togglePartnerExpand(partnerName)}
                                             className="text-sm text-gray-500 hover:text-gray-900 font-medium flex items-center gap-2"
                                         >
                                             Show Less
