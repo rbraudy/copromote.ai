@@ -52,7 +52,7 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
             const newSuggestions = data.suggestions || [];
             setSuggestions(newSuggestions);
 
-            // Start sequential generation (Breadth-First)
+            // Start sequential generation (Combined First)
             generateAllVignettesSequentially(newSuggestions);
 
         } catch (err: any) {
@@ -64,19 +64,13 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
     };
 
     const generateAllVignettesSequentially = async (bundles: BundleSuggestion[]) => {
-        // Pass 1: Solo Images for ALL bundles (Priority)
+        // Pass 1: Combined 1 for ALL bundles (Priority - The "Hero" Image)
         for (let i = 0; i < bundles.length; i++) {
-            await generateOneVignette(i, bundles[i], 'solo', 'modern kitchen');
+            await generateOneVignette(i, bundles[i], 'combined', 'modern kitchen');
             await new Promise(r => setTimeout(r, 2000)); // 2s delay
         }
 
-        // Pass 2: Combined 1 for ALL bundles
-        for (let i = 0; i < bundles.length; i++) {
-            await generateOneVignette(i, bundles[i], 'combined', 'modern kitchen');
-            await new Promise(r => setTimeout(r, 2000));
-        }
-
-        // Pass 3: Combined 2 for ALL bundles
+        // Pass 2: Combined 2 for ALL bundles (The "Carousel" Image)
         for (let i = 0; i < bundles.length; i++) {
             await generateOneVignette(i, bundles[i], 'combined', 'lifestyle table setting');
             await new Promise(r => setTimeout(r, 2000));
@@ -178,9 +172,17 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200 backdrop-blur-sm">
-            {/* Modal Container - Narrower (max-w-md) & Taller */}
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[95vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300 relative">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            {/* Accessibility Description */}
+            <div className="sr-only" id="modal-description">
+                AI-curated bundle suggestions for {partnerName}
+            </div>
+
+            {/* Modal Container - Wider (max-w-lg) & Taller */}
+            <div
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[95vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300 relative"
+                aria-describedby="modal-description"
+            >
 
                 {/* Floating Close Button */}
                 <button
@@ -218,28 +220,28 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
                                 <div key={index} className="relative group">
 
                                     {/* Full Bleed Image Carousel */}
-                                    <div className="relative h-[600px] w-full bg-gray-100">
+                                    <div className="relative h-[600px] w-full bg-gray-900">
                                         {(() => {
-                                            const images = [
-                                                { url: bundle.seller_product_image, label: 'Your Product' },
-                                                ...(bundle.vignette_urls || []).map((url, i) => ({ url, label: `AI Concept ${i + 1}` }))
-                                            ].filter(img => img.url);
+                                            // Only show generated vignettes in the main carousel now
+                                            const images = (bundle.vignette_urls || []).map((url, i) => ({ url, label: `AI Concept ${i + 1}` }));
+
+                                            // If no images yet, show placeholder or loading state
+                                            const isGenerating = generatingVignettes[index];
 
                                             const currentIndex = currentImageIndices[index] || 0;
                                             const currentImg = images[currentIndex];
-                                            const isGenerating = generatingVignettes[index];
 
                                             if (images.length === 0) {
                                                 return (
                                                     <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50">
                                                         {isGenerating ? (
                                                             <>
-                                                                <Loader2 className="animate-spin mb-3 text-black" size={32} />
-                                                                <span className="text-sm font-medium text-gray-900">Generating Visuals...</span>
+                                                                <Loader2 className="animate-spin mb-3 text-white" size={32} />
+                                                                <span className="text-sm font-medium text-gray-300">Generating Visuals...</span>
                                                             </>
                                                         ) : (
                                                             <div className="text-center p-4">
-                                                                <p className="text-sm">No Images Available</p>
+                                                                <p className="text-sm">Waiting for AI...</p>
                                                             </div>
                                                         )}
                                                     </div>
@@ -253,13 +255,17 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
                                                     <img
                                                         src={currentImg.url}
                                                         alt={currentImg.label}
-                                                        className="w-full h-full object-cover"
+                                                        className="w-full h-full object-contain bg-gray-900"
                                                         onError={(e) => {
                                                             console.error('Failed to load image:', currentImg.url);
-                                                            e.currentTarget.style.display = 'none'; // Hide broken image
-                                                            e.currentTarget.parentElement?.classList.add('bg-red-100'); // Show error bg
+                                                            // Show error state
+                                                            e.currentTarget.style.display = 'none';
+                                                            e.currentTarget.parentElement?.querySelector('.error-msg')?.classList.remove('hidden');
                                                         }}
                                                     />
+                                                    <div className="error-msg hidden absolute inset-0 flex items-center justify-center bg-red-900/50 text-red-200 font-medium">
+                                                        Image Failed to Load
+                                                    </div>
 
                                                     {/* Gradient Overlay for Text Readability */}
                                                     <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/80 pointer-events-none" />
@@ -316,16 +322,38 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
                                     {/* Action Card (Overlapping) */}
                                     <div className="relative -mt-12 mx-4 bg-white rounded-xl shadow-lg p-5 border border-gray-100 z-10">
 
-                                        {/* Product Pairing */}
+                                        {/* Product Pairing with Thumbnails */}
                                         <div className="flex items-center gap-3 mb-5 text-sm border-b border-gray-100 pb-4">
-                                            <div className="flex-1 font-medium text-gray-900 line-clamp-2 leading-tight">
-                                                {bundle.seller_product_name}
+                                            {/* Seller Product */}
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                {bundle.seller_product_image && (
+                                                    <img
+                                                        src={bundle.seller_product_image}
+                                                        alt="Your Product"
+                                                        className="w-10 h-10 rounded-md object-cover border border-gray-200 shrink-0"
+                                                    />
+                                                )}
+                                                <div className="font-medium text-gray-900 line-clamp-2 leading-tight text-xs">
+                                                    {bundle.seller_product_name}
+                                                </div>
                                             </div>
-                                            <div className="text-gray-300 shrink-0">
-                                                <ArrowRight size={16} />
+
+                                            <div className="text-gray-300 shrink-0 px-1">
+                                                <ArrowRight size={14} />
                                             </div>
-                                            <div className="flex-1 font-medium text-gray-900 text-right line-clamp-2 leading-tight">
-                                                {bundle.partner_product_name}
+
+                                            {/* Partner Product */}
+                                            <div className="flex items-center gap-2 flex-1 min-w-0 justify-end text-right">
+                                                <div className="font-medium text-gray-900 line-clamp-2 leading-tight text-xs">
+                                                    {bundle.partner_product_name}
+                                                </div>
+                                                {bundle.partner_product_image && (
+                                                    <img
+                                                        src={bundle.partner_product_image}
+                                                        alt="Partner Product"
+                                                        className="w-10 h-10 rounded-md object-cover border border-gray-200 shrink-0"
+                                                    />
+                                                )}
                                             </div>
                                         </div>
 
