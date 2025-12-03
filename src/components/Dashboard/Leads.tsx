@@ -19,6 +19,10 @@ export const Leads = ({ user }: LeadsProps) => {
     // Form State
     const [newLeadUrl, setNewLeadUrl] = useState('');
     const [companyName, setCompanyName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [isAdding, setIsAdding] = useState(false);
 
     useEffect(() => {
@@ -58,6 +62,10 @@ export const Leads = ({ user }: LeadsProps) => {
                 .insert([{
                     store_url: formattedUrl,
                     company_name: companyName,
+                    first_name: firstName,
+                    last_name: lastName,
+                    email: email,
+                    phone: phone,
                     seller_id: user.uid,
                     status: 'new'
                 }])
@@ -75,6 +83,10 @@ export const Leads = ({ user }: LeadsProps) => {
 
             setNewLeadUrl('');
             setCompanyName('');
+            setFirstName('');
+            setLastName('');
+            setEmail('');
+            setPhone('');
             setIsModalOpen(false);
             fetchLeads();
             alert('Partner added successfully! Products are being imported in the background.');
@@ -160,7 +172,7 @@ export const Leads = ({ user }: LeadsProps) => {
                                     }}
                                     className="w-full flex items-center justify-center gap-2 text-blue-600 font-medium hover:bg-blue-50 py-2 rounded-lg transition-colors"
                                 >
-                                    Create Bundle
+                                    Create Promotion
                                     <ArrowRight size={16} />
                                 </button>
                             </div>
@@ -203,6 +215,58 @@ export const Leads = ({ user }: LeadsProps) => {
                                     value={newLeadUrl}
                                     onChange={(e) => setNewLeadUrl(e.target.value)}
                                     required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                    <input
+                                        type="text"
+                                        name="firstName"
+                                        id="firstName"
+                                        placeholder="Jane"
+                                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                        value={firstName}
+                                        onChange={(e) => setFirstName(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                    <input
+                                        type="text"
+                                        name="lastName"
+                                        id="lastName"
+                                        placeholder="Doe"
+                                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                        value={lastName}
+                                        onChange={(e) => setLastName(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Contact Email (Optional)</label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    id="email"
+                                    placeholder="partner@example.com"
+                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Mobile Phone (Optional)</label>
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    id="phone"
+                                    placeholder="+1 (555) 000-0000"
+                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
                                 />
                             </div>
 

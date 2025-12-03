@@ -167,9 +167,11 @@ serve(async (req) => {
             return {
                 ...s,
                 seller_product_name: sellerP.name,
-                seller_product_image: sellerP.imageUrl, // Note: camelCase from DB
+                seller_product_image: sellerP.imageUrl,
+                seller_product_price: sellerP.price,
                 partner_product_name: partnerP.title,
-                partner_product_image: partnerP.image_url
+                partner_product_image: partnerP.image_url,
+                partner_product_price: partnerP.price
             }
         }).filter((s: any) => s !== null)
 

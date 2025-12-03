@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { X, Loader2, Sparkles, ArrowRight, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Loader2, ArrowRight, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface BundleSuggestionsModalProps {
     isOpen: boolean;
@@ -15,8 +15,10 @@ interface BundleSuggestion {
     customer_product_id: string;
     seller_product_name?: string;
     seller_product_image?: string;
+    seller_product_price?: number;
     partner_product_name?: string;
     partner_product_image?: string;
+    partner_product_price?: number;
     bundle_title: string;
     bundle_description: string;
     discount_percentage: number;
@@ -33,6 +35,8 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
     const [currentImageIndices, setCurrentImageIndices] = useState<{ [key: number]: number }>({});
     const [creating, setCreating] = useState<number | null>(null);
     const [generatingVignettes, setGeneratingVignettes] = useState<{ [key: number]: boolean }>({});
+    const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+    const [batchCreating, setBatchCreating] = useState(false);
 
     useEffect(() => {
         if (isOpen && leadId && sellerId) {
@@ -137,9 +141,89 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
         }));
     };
 
+
+
+    const toggleSelection = (index: number) => {
+        setSelectedIndices(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(index)) {
+                newSet.delete(index);
+            } else {
+                newSet.add(index);
+            }
+            return newSet;
+        });
+    };
+
+    const updateProductPrice = async (productId: string, price: number) => {
+        if (!productId || !price) return;
+        const { error } = await supabase
+            .from('products')
+            .update({ price: price })
+            .eq('id', productId);
+
+        if (error) {
+            console.error('Error updating product price:', error);
+        }
+    };
+
+    const handleCreateBatch = async () => {
+        if (selectedIndices.size === 0) return;
+        setBatchCreating(true);
+        try {
+            const promises = Array.from(selectedIndices).map(async index => {
+                const bundle = suggestions[index];
+
+                // Update product price if changed
+                if (bundle.seller_product_price) {
+                    await updateProductPrice(bundle.seller_product_id, bundle.seller_product_price);
+                }
+
+                return supabase.from('copromotions').insert({
+                    seller_id: sellerId,
+                    lead_id: leadId,
+                    seller_product_id: bundle.seller_product_id,
+                    external_product_id: bundle.customer_product_id,
+                    status: 'draft',
+                    offer_details: {
+                        discount: bundle.discount_percentage,
+                        moq: bundle.minimum_order_quantity,
+                        duration: bundle.duration_days,
+                        title: bundle.bundle_title,
+                        description: bundle.bundle_description,
+                        original_price: (bundle.seller_product_price || 0),
+                        promotion_price: ((bundle.seller_product_price || 0) * (1 - (bundle.discount_percentage || 0) / 100)),
+                        partner_product_name: bundle.partner_product_name,
+                        partner_product_image: bundle.partner_product_image,
+                        partner_product_price: bundle.partner_product_price,
+                        seller_product_name: bundle.seller_product_name,
+                        seller_product_image: bundle.seller_product_image
+                    },
+                    marketing_assets: {
+                        vignettes: bundle.vignette_urls
+                    }
+                });
+            });
+
+            await Promise.all(promises);
+            alert(`${selectedIndices.size} promotions created successfully!`);
+            onClose();
+        } catch (err: any) {
+            console.error('Error creating promotions:', err);
+            alert('Failed to create promotions: ' + err.message);
+        } finally {
+            setBatchCreating(false);
+        }
+    };
+
     const handleCreatePromotion = async (index: number, bundle: BundleSuggestion) => {
         setCreating(index);
         try {
+            // Update product price if changed
+            if (bundle.seller_product_price) {
+                await updateProductPrice(bundle.seller_product_id, bundle.seller_product_price);
+            }
+
             const { error } = await supabase.from('copromotions').insert({
                 seller_id: sellerId,
                 lead_id: leadId,
@@ -151,7 +235,14 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
                     moq: bundle.minimum_order_quantity,
                     duration: bundle.duration_days,
                     title: bundle.bundle_title,
-                    description: bundle.bundle_description
+                    description: bundle.bundle_description,
+                    original_price: (bundle.seller_product_price || 0),
+                    promotion_price: ((bundle.seller_product_price || 0) * (1 - (bundle.discount_percentage || 0) / 100)),
+                    partner_product_name: bundle.partner_product_name,
+                    partner_product_image: bundle.partner_product_image,
+                    partner_product_price: bundle.partner_product_price,
+                    seller_product_name: bundle.seller_product_name,
+                    seller_product_image: bundle.seller_product_image
                 },
                 marketing_assets: {
                     vignettes: bundle.vignette_urls
@@ -270,8 +361,16 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
                                                     {/* Gradient Overlay for Text Readability */}
                                                     <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/80 pointer-events-none" />
 
-                                                    {/* Top Badge */}
-                                                    <div className="absolute top-6 left-6 z-10">
+                                                    <div className="absolute top-6 left-6 z-10 flex items-center gap-3">
+                                                        <button
+                                                            onClick={() => toggleSelection(index)}
+                                                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm ${selectedIndices.has(index)
+                                                                ? 'bg-blue-600 text-white ring-2 ring-white'
+                                                                : 'bg-white/20 backdrop-blur hover:bg-white/40 text-white ring-1 ring-white/50'
+                                                                }`}
+                                                        >
+                                                            {selectedIndices.has(index) ? <Check size={16} /> : <div className="w-4 h-4 rounded-sm border-2 border-white/80" />}
+                                                        </button>
                                                         <span className="bg-white/90 backdrop-blur text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
                                                             Match #{index + 1}
                                                         </span>
@@ -406,6 +505,43 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
                                             </div>
                                         </div>
 
+                                        {/* Price Calculation Display */}
+                                        <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3 mb-5 text-sm gap-4">
+                                            <div className="flex-1">
+                                                <span className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Original Price</span>
+                                                <div className="relative">
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                                                    <input
+                                                        type="number"
+                                                        value={bundle.seller_product_price || 0}
+                                                        onChange={(e) => {
+                                                            const val = parseFloat(e.target.value);
+                                                            handleUpdateBundle(index, 'seller_product_price', isNaN(val) ? 0 : val);
+                                                        }}
+                                                        className="w-full bg-white border border-gray-200 rounded px-2 py-1 pl-5 text-gray-900 font-medium focus:outline-none focus:border-blue-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 text-right">
+                                                <span className="block text-[10px] uppercase font-bold text-blue-600 mb-1">Deal Price</span>
+                                                <div className="relative">
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-blue-600 font-bold">$</span>
+                                                    <input
+                                                        type="number"
+                                                        value={(((bundle.seller_product_price || 0) * (1 - (bundle.discount_percentage || 0) / 100))).toFixed(2)}
+                                                        onChange={(e) => {
+                                                            const dealPrice = parseFloat(e.target.value);
+                                                            if (!isNaN(dealPrice) && (bundle.seller_product_price || 0) > 0) {
+                                                                const newDiscount = 100 * (1 - dealPrice / (bundle.seller_product_price || 0));
+                                                                handleUpdateBundle(index, 'discount_percentage', Math.max(0, Math.round(newDiscount)));
+                                                            }
+                                                        }}
+                                                        className="w-full bg-blue-50 border border-blue-100 rounded px-2 py-1 pl-5 text-blue-700 font-bold text-right focus:outline-none focus:border-blue-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         {/* Create Button */}
                                         <button
                                             onClick={() => handleCreatePromotion(index, bundle)}
@@ -430,6 +566,32 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
                         </div>
                     )}
                 </div>
+
+                {/* Sticky Footer for Batch Action */}
+                {selectedIndices.size > 0 && (
+                    <div className="p-4 border-t border-gray-100 bg-white flex justify-between items-center animate-in slide-in-from-bottom-4">
+                        <span className="text-sm font-medium text-gray-600">
+                            {selectedIndices.size} bundle{selectedIndices.size > 1 ? 's' : ''} selected
+                        </span>
+                        <button
+                            onClick={handleCreateBatch}
+                            disabled={batchCreating}
+                            className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 flex items-center gap-2"
+                        >
+                            {batchCreating ? (
+                                <>
+                                    <Loader2 className="animate-spin" size={20} />
+                                    Creating...
+                                </>
+                            ) : (
+                                <>
+                                    Create {selectedIndices.size} Promotions
+                                    <ArrowRight size={20} />
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

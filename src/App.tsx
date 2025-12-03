@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import Header from './components/Layout/Header';
@@ -11,17 +12,18 @@ import SignInModal from './components/Auth/SignInModal';
 import SignUpModal from './components/Auth/SignUpModal';
 import ProductCatalog from './components/Dashboard/ProductCatalog';
 import { Leads } from './components/Dashboard/Leads';
+import { ProposalsList } from './components/Dashboard/ProposalsList';
+import { PartnerPortal } from './components/External/PartnerPortal';
 
-function App() {
+function DashboardLayout() {
     const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
     const [isSignInOpen, setIsSignInOpen] = useState(false);
     const [isSignUpOpen, setIsSignUpOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<'products' | 'partners' | 'proposals'>('products');
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             setUser(currentUser);
-            setLoading(false);
         });
         return () => unsubscribe();
     }, []);
@@ -29,16 +31,10 @@ function App() {
     const handleSignOut = async () => {
         try {
             await signOut(auth);
-            // alert("Signed out successfully."); // Optional: remove alert for smoother experience
         } catch (error) {
             console.error("Error signing out:", error);
         }
     };
-
-    // Removed blocking loader to show app shell immediately
-    // if (loading) { ... }
-
-    const [activeTab, setActiveTab] = useState<'products' | 'leads'>('products');
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -60,17 +56,25 @@ function App() {
                                 My Products
                             </button>
                             <button
-                                onClick={() => setActiveTab('leads')}
-                                className={`pb-2 px-4 ${activeTab === 'leads' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
+                                onClick={() => setActiveTab('partners')}
+                                className={`pb-2 px-4 ${activeTab === 'partners' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
                             >
-                                Promotions
+                                Partners
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('proposals')}
+                                className={`pb-2 px-4 ${activeTab === 'proposals' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
+                            >
+                                Proposals
                             </button>
                         </div>
 
                         {activeTab === 'products' ? (
                             <ProductCatalog user={user} />
-                        ) : (
+                        ) : activeTab === 'partners' ? (
                             <Leads user={user} />
+                        ) : (
+                            <ProposalsList user={user} />
                         )}
                     </div>
                 ) : (
@@ -88,12 +92,22 @@ function App() {
                 onClose={() => setIsSignInOpen(false)}
                 onSignInSuccess={(user) => {
                     setUser(user);
-                    setLoading(false);
                     setIsSignInOpen(false);
                 }}
             />
             <SignUpModal isOpen={isSignUpOpen} onClose={() => setIsSignUpOpen(false)} />
         </div>
+    );
+}
+
+function App() {
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route path="/partner/:leadId" element={<PartnerPortal />} />
+                <Route path="/*" element={<DashboardLayout />} />
+            </Routes>
+        </BrowserRouter>
     );
 }
 
