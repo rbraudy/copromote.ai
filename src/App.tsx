@@ -104,7 +104,6 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/partner/:leadId" element={<PartnerPortal />} />
                 <Route path="/*" element={<DashboardLayout />} />
             </Routes>
         </BrowserRouter>

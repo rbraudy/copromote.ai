@@ -84,7 +84,7 @@ export const BundleSuggestionsModal = ({ isOpen, onClose, leadId, sellerId, part
     const generateOneVignette = async (index: number, bundle: BundleSuggestion, type: string, setting: string) => {
         setGeneratingVignettes(prev => ({ ...prev, [index]: true }));
         try {
-            const { data, error } = await supabase.functions.invoke('generateVignette', {
+            const { data, error } = await supabase.functions.invoke('generateVignetteGemini', {
                 body: { bundle, setting, type }
             });
 
