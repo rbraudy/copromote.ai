@@ -12,11 +12,15 @@ serve(async (req) => {
     }
 
     try {
-        const { leadId, proposalId } = await req.json()
+        const { leadId, proposalId, shareUrl } = await req.json()
 
         if (!leadId || !proposalId) {
             throw new Error('Missing leadId or proposalId')
         }
+
+        // ... (Supabase init and fetching logic remains same) ...
+
+
 
         // 1. Initialize Supabase
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -42,34 +46,7 @@ serve(async (req) => {
 
         if (!lead.phone) throw new Error('Lead has no phone number')
 
-        // 3. Construct the AI System Prompt
-        const systemPrompt = `
-        You are an AI assistant for ${proposal.offer_details?.title || 'a promotion'}.
-        You are calling ${lead.first_name || 'the partner'} at ${lead.company_name || 'their store'}.
-        Your goal is to tell them about a new co-promotion opportunity.
-        
-        Details:
-        - Bundle: ${proposal.offer_details?.title}
-        - Description: ${proposal.offer_details?.description}
-        - Discount: ${proposal.offer_details?.discount}%
-        
-        Script:
-        1. Introduce yourself as calling from Copromote.
-        2. Mention the bundle opportunity.
-        3. Ask if they are interested in hearing more.
-        4. If yes, say you will send them a link.
-        5. If no, thank them and goodbye.
-        `
-
-        // 4. Call Vapi API
-        const vapiPrivateKey = Deno.env.get('VAPI_PRIVATE_KEY')!
-        const vapiPhoneNumberId = Deno.env.get('VAPI_PHONE_NUMBER_ID')
-
-        if (!vapiPhoneNumberId) {
-            throw new Error('VAPI_PHONE_NUMBER_ID is not set in Supabase secrets')
-        }
-
-        // Sanitize phone number (remove spaces, dashes, parentheses)
+        // 3. Sanitize phone number (remove spaces, dashes, parentheses)
         let sanitizedPhone = lead.phone.replace(/[^\d+]/g, '')
 
         // Ensure E.164 format
@@ -86,6 +63,49 @@ serve(async (req) => {
             else {
                 sanitizedPhone = `+${sanitizedPhone}`
             }
+        }
+
+        // 4. Construct the AI System Prompt
+        const systemPrompt = `
+        You are Catherine, Portstyle's AI Sales Agent. You are calling ${lead.first_name || 'a partner'} at ${lead.company_name || 'their store'}.
+
+        **Style & Tone:**
+        - **Transparent**: You are proudly an AI agent.
+        - **Conversational**: Speak naturally. Use brief pauses.
+        - **Polite**: Always acknowledge their greeting before moving on.
+
+        **IMPORTANT - The Link:**
+        If they agree to receive the text, you MUST use this specific link in your message: ${shareUrl || '[Link not provided]'}
+
+        **Script Flow:**
+
+        1. **Opening** (This is your first message):
+           "Hi, this is Catherine, Portstyle's AI Sales Agent. Is ${lead.first_name || 'the manager'} available?"
+
+        2. **If they say "Speaking", "This is him/her", or just "Hello":**
+           "Hi ${lead.first_name || 'there'}. The reason I'm calling is that we've handpicked some new product bundles specifically for your store."
+           
+           "They combine our best-sellers with your inventory to help boost sales. I'd love to just text you a link to check them out. Would that be okay?"
+
+        3. **Handling "Yes" (Send Text):**
+           "Great. Is this the best mobile number for you: ${sanitizedPhone}?"
+           *(If yes)*: "Perfect. Sending it over now... Done! Let me know what you think."
+           *(Wait for them to acknowledge, then say)*: "Thanks! Have a great day."
+
+        4. **Handling "No" / "Busy" / "Not Interested":**
+           "Totally get it. I can just shoot you an email instead if that's easier?"
+           *(If still no)*: "No worries at all. Have a great day!"
+
+        5. **If they ask "Are you a robot?":**
+           "Yes, I'm an AI agent helping the Portstyle team reach out to our partners more efficiently. But I can definitely get a real person to call you if you prefer?"
+        `
+
+        // 5. Call Vapi API
+        const vapiPrivateKey = Deno.env.get('VAPI_PRIVATE_KEY')!
+        const vapiPhoneNumberId = Deno.env.get('VAPI_PHONE_NUMBER_ID')
+
+        if (!vapiPhoneNumberId) {
+            throw new Error('VAPI_PHONE_NUMBER_ID is not set in Supabase secrets')
         }
 
         // Dynamic Caller ID Routing
@@ -119,18 +139,44 @@ serve(async (req) => {
                 name: `${lead.first_name} ${lead.last_name}`.trim()
             },
             assistant: {
-                firstMessage: `Hi ${lead.first_name || 'there'}, I'm calling from Copromote about a new partnership opportunity. Do you have a minute?`,
+                firstMessage: `Hi, this is Catherine, Portstyle's AI Sales Agent. Is ${lead.first_name || 'the manager'} available?`,
                 model: {
                     provider: "openai",
-                    model: "gpt-3.5-turbo",
+                    model: "gpt-4o-mini",
                     messages: [
                         {
                             role: "system",
                             content: systemPrompt
                         }
+                    ],
+                    functions: [
+                        {
+                            name: "sendSms",
+                            description: "Send a text message with the promotion link to the customer.",
+                            parameters: {
+                                type: "object",
+                                properties: {
+                                    phoneNumber: {
+                                        type: "string",
+                                        description: "The customer's phone number to text (e.g. +15550000000)."
+                                    },
+                                    message: {
+                                        type: "string",
+                                        description: `The message content to send. MUST include the link: ${shareUrl || 'the promotion link'}`
+                                    }
+                                },
+                                required: ["phoneNumber", "message"]
+                            }
+                        }
                     ]
                 },
-                voice: "jennifer-playht" // Example voice
+                transcriber: {
+                    provider: "deepgram",
+                    model: "nova-2",
+                    language: "en"
+                },
+                voice: "jennifer-playht", // Example voice
+                serverUrl: Deno.env.get('SUPABASE_URL') + '/functions/v1/handle-call-webhook'
             }
         }
 
