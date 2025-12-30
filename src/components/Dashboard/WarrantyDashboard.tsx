@@ -82,22 +82,17 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
         setCallingId(prospect.id);
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/make-warranty-call`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session?.access_token}`
-                },
-                body: JSON.stringify({
+            const { data, error } = await supabase.functions.invoke('make-warranty-call', {
+                body: {
                     prospectId: prospect.id,
-                    phoneNumber: prospect.phone,
-                    firstName: prospect.customer_name.split(' ')[0],
-                    productName: prospect.product_name
-                })
+                    phone: prospect.phone,
+                    customerName: prospect.customer_name,
+                    productName: prospect.product_name,
+                    purchaseDate: prospect.purchase_date
+                }
             });
 
-            if (!response.ok) throw new Error('Failed to initiate call');
+            if (error) throw error;
 
             await fetchProspects();
         } catch (error) {

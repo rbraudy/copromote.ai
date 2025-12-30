@@ -13,10 +13,17 @@ serve(async (req) => {
     }
 
     try {
-        const { phone, customerName, productName, purchaseDate, prospectId } = await req.json();
+        const body = await req.json();
+        console.log('Received request body:', JSON.stringify(body));
+
+        const phone = body.phone || body.phoneNumber;
+        const customerName = body.customerName || body.firstName;
+        const productName = body.productName;
+        const purchaseDate = body.purchaseDate;
+        const prospectId = body.prospectId;
 
         if (!phone) {
-            throw new Error('Missing phone number');
+            throw new Error('Missing phone number (passed as phone or phoneNumber)');
         }
 
         // Calculate Expiry Date (7 days from purchase)
@@ -174,6 +181,8 @@ serve(async (req) => {
             }
         };
 
+        console.log('Initiating Vapi call with body:', JSON.stringify(callBody));
+
         const vapiResponse = await fetch('https://api.vapi.ai/call', {
             method: 'POST',
             headers: {
@@ -185,10 +194,12 @@ serve(async (req) => {
 
         if (!vapiResponse.ok) {
             const errText = await vapiResponse.text();
+            console.error('Vapi API Error:', errText);
             throw new Error(`Vapi API Error: ${vapiResponse.status} ${errText}`);
         }
 
         const vapiData = await vapiResponse.json();
+        console.log('Vapi Call Initiated:', vapiData.id);
 
         // 7. Increment Call Attempts
         if (prospectId) {
