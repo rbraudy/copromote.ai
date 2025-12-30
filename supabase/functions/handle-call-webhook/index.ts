@@ -114,10 +114,24 @@ serve(async (req) => {
             const supabase = createClient(supabaseUrl, serviceKey)
 
             // 2. Update Call Log
+            const durationSeconds = Math.round((new Date(call.endedAt).getTime() - new Date(call.startedAt).getTime()) / 1000)
+            const durationInterval = `${durationSeconds} seconds`
+
+            // Map connection status to SUCCESS/FAIL
+            // Vapi endedReasons that count as SUCCESS: 'customer-ended-call', 'assistant-ended-call', 'hangup'
+            const successReasons = ['customer-ended-call', 'assistant-ended-call', 'hangup']
+            const connectionStatus = successReasons.includes(call.endedReason) ? 'SUCCESS' : 'FAIL'
+
+            // Check if link was sent (look for sendSms tool call)
+            const linkSent = call.analysis?.toolCalls?.some((tc: any) => tc.function.name === 'sendSms') || false
+
             const { error } = await supabase
                 .from('call_logs')
                 .update({
-                    status: call.status, // e.g. 'ended'
+                    status: call.status,
+                    connection_status: connectionStatus,
+                    duration: durationInterval,
+                    link_sent: linkSent,
                     outcome: call.analysis?.summary || call.endedReason,
                     transcript: call.transcript,
                     recording_url: call.recordingUrl,
@@ -128,6 +142,28 @@ serve(async (req) => {
             if (error) {
                 console.error('Error updating call log:', error)
                 throw error
+            }
+
+            // 3. Update related Warranty Prospect status if applicable
+            const { data: logEntry } = await supabase
+                .from('call_logs')
+                .select('warranty_prospect_id')
+                .eq('provider_call_id', call.id)
+                .single()
+
+            if (logEntry?.warranty_prospect_id) {
+                let newStatus = 'called'
+                const analysis = (call.analysis?.summary || '').toLowerCase()
+                if (analysis.includes('enrolled') || analysis.includes('bought') || analysis.includes('yes')) {
+                    newStatus = 'enrolled'
+                } else if (analysis.includes('declined') || analysis.includes('not interested') || analysis.includes('no')) {
+                    newStatus = 'declined'
+                }
+
+                await supabase
+                    .from('warranty_prospects')
+                    .update({ status: newStatus })
+                    .eq('id', logEntry.warranty_prospect_id)
             }
 
             return new Response('OK', { status: 200 })

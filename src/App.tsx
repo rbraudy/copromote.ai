@@ -13,13 +13,13 @@ import SignUpModal from './components/Auth/SignUpModal';
 import ProductCatalog from './components/Dashboard/ProductCatalog';
 import { Leads } from './components/Dashboard/Leads';
 import { ProposalsList } from './components/Dashboard/ProposalsList';
-import { PartnerPortal } from './components/External/PartnerPortal';
+import { WarrantyDashboard } from './components/Dashboard/WarrantyDashboard';
 
 function DashboardLayout() {
     const [user, setUser] = useState<User | null>(null);
     const [isSignInOpen, setIsSignInOpen] = useState(false);
     const [isSignUpOpen, setIsSignUpOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'products' | 'partners' | 'proposals'>('products');
+    const [activeTab, setActiveTab] = useState<'products' | 'partners' | 'proposals' | 'warranty'>('products');
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -67,14 +67,22 @@ function DashboardLayout() {
                             >
                                 Promotions
                             </button>
+                            <button
+                                onClick={() => setActiveTab('warranty')}
+                                className={`pb-2 px-4 ${activeTab === 'warranty' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
+                            >
+                                Warranty Leads
+                            </button>
                         </div>
 
                         {activeTab === 'products' ? (
                             <ProductCatalog user={user} />
                         ) : activeTab === 'partners' ? (
                             <Leads user={user} />
-                        ) : (
+                        ) : activeTab === 'proposals' ? (
                             <ProposalsList user={user} />
+                        ) : (
+                            <WarrantyDashboard user={user} />
                         )}
                     </div>
                 ) : (

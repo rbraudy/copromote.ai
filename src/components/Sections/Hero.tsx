@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { DemoCallModal } from '../Dashboard/DemoCallModal';
 
 const Hero: React.FC = () => {
+    const [isDemoOpen, setIsDemoOpen] = useState(false);
     return (
         <section className="bg-hero-gradient pt-32 pb-24 text-center">
             <div className="max-w-4xl mx-auto px-6">
@@ -16,12 +18,23 @@ const Hero: React.FC = () => {
                 </p>
 
                 {/* Main CTA */}
-                <a
-                    href="#demo"
-                    className="inline-block px-12 py-4 bg-accent-purple text-lg font-bold rounded-xl shadow-2xl shadow-violet-500/50 hover:bg-violet-600 transition duration-300 transform hover:scale-[1.02]"
-                >
-                    Start Generating Sales
-                </a>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <a
+                        href="#demo"
+                        className="w-full sm:w-auto px-12 py-4 bg-accent-purple text-lg font-bold rounded-xl shadow-2xl shadow-violet-500/50 hover:bg-violet-600 transition duration-300 transform hover:scale-[1.02]"
+                    >
+                        Start Generating Sales
+                    </a>
+
+                    <button
+                        onClick={() => setIsDemoOpen(true)}
+                        className="w-full sm:w-auto px-12 py-4 bg-white/10 text-white text-lg font-bold rounded-xl border border-white/20 hover:bg-white/20 transition duration-300 transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                    >
+                        Henry's AI Call
+                    </button>
+                </div>
+
+                <DemoCallModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
 
                 {/* Placeholder Image/Mockup */}
                 <div className="mt-20">

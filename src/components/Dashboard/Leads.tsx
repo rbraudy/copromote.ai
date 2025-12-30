@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Building2, Globe, ArrowRight, Loader2 } from 'lucide-react';
+import { Plus, Building2, Globe, ArrowRight, Loader2, FileText } from 'lucide-react';
 import { BundleSuggestionsModal } from './BundleSuggestionsModal';
+import { CallTranscriptModal } from './CallTranscriptModal';
 
 interface LeadsProps {
     user: any;
@@ -15,6 +16,7 @@ export const Leads = ({ user }: LeadsProps) => {
     // Bundle Modal State
     const [isBundleModalOpen, setIsBundleModalOpen] = useState(false);
     const [selectedLead, setSelectedLead] = useState<any>(null);
+    const [selectedLeadForTranscript, setSelectedLeadForTranscript] = useState<string | null>(null);
 
     // Form State
     const [newLeadUrl, setNewLeadUrl] = useState('');
@@ -164,17 +166,26 @@ export const Leads = ({ user }: LeadsProps) => {
                                 {new URL(lead.store_url).hostname}
                             </a>
 
-                            <div className="mt-auto pt-4 border-t border-gray-100">
+                            <div className="mt-auto pt-4 border-t border-gray-100 flex gap-2">
                                 <button
                                     onClick={() => {
                                         setSelectedLead(lead);
                                         setIsBundleModalOpen(true);
                                     }}
-                                    className="w-full flex items-center justify-center gap-2 text-blue-600 font-medium hover:bg-blue-50 py-2 rounded-lg transition-colors"
+                                    className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white font-medium hover:bg-blue-700 py-2 rounded-lg transition-colors"
                                 >
                                     Create Promotion
                                     <ArrowRight size={16} />
                                 </button>
+                                {lead.status !== 'new' && (
+                                    <button
+                                        onClick={() => setSelectedLeadForTranscript(lead.id)}
+                                        className="px-3 flex items-center justify-center border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-100 rounded-lg transition-colors"
+                                        title="View Outreach History"
+                                    >
+                                        <FileText size={20} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -308,6 +319,12 @@ export const Leads = ({ user }: LeadsProps) => {
                     partnerName={selectedLead.company_name}
                 />
             )}
+
+            <CallTranscriptModal
+                isOpen={!!selectedLeadForTranscript}
+                onClose={() => setSelectedLeadForTranscript(null)}
+                leadId={selectedLeadForTranscript || undefined}
+            />
         </div>
     );
 };
