@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
+const canadianAreaCodes = [
+    '204', '226', '236', '249', '250', '289', '306', '343', '365', '403', '416', '418', '431', '437', '438',
+    '450', '506', '514', '519', '548', '579', '581', '587', '604', '613', '639', '647', '672', '705', '709',
+    '778', '780', '782', '807', '819', '825', '867', '873', '902', '905'
+];
+
 serve(async (req) => {
     try {
         const body = await req.json()
@@ -42,10 +48,22 @@ serve(async (req) => {
 
                         const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
                         const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
-                        const fromNumber = Deno.env.get('TWILIO_PHONE_NUMBER')
+                        let fromNumber = Deno.env.get('TWILIO_PHONE_NUMBER')
+
+                        // Canadian Routing for SMS
+                        if (phoneNumber.startsWith('+1')) {
+                            const areaCode = phoneNumber.substring(2, 5);
+                            if (canadianAreaCodes.includes(areaCode)) {
+                                const caSmsNumber = Deno.env.get('TWILIO_PHONE_NUMBER_CA');
+                                if (caSmsNumber) {
+                                    console.log(`Detected Canadian recipient for SMS (${areaCode}), using CA sender: ${caSmsNumber}`);
+                                    fromNumber = caSmsNumber;
+                                }
+                            }
+                        }
 
                         if (!accountSid || !authToken || !fromNumber) {
-                            throw new Error('Twilio credentials not set')
+                            throw new Error('Twilio credentials not set (SID, Token, or From Number)')
                         }
 
                         // Twilio API Call

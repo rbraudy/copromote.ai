@@ -175,9 +175,7 @@ serve(async (req) => {
                     language: "en"
                 },
                 voice: "jennifer-playht",
-                serverUrl: Deno.env.get('SUPABASE_URL') + '/functions/v1/handle-call-webhook',
-                endOfUtteranceTimeout: 1200,
-                interruptible: true
+                serverUrl: Deno.env.get('SUPABASE_URL') + '/functions/v1/handle-call-webhook'
             }
         };
 
