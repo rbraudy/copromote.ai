@@ -6,11 +6,13 @@ const caCodes = ['204', '226', '236', '249', '250', '289', '306', '343', '365', 
 serve(async (req) => {
     try {
         const body = await req.json();
+        console.log(`Webhook Received: type=${body.type}, callId=${body.call?.id}`);
+
         const { type, call, toolCalls, transcript, message } = body;
 
         // Vapi sends "tool-calls" for real-time execution
-        // Vapi sends "message" with "tool-calls" sometimes too
         const actualToolCalls = toolCalls || message?.toolCalls;
+        if (actualToolCalls) console.log(`Tool Calls detected: ${actualToolCalls.length}`);
 
         if (type === 'tool-calls' || actualToolCalls) {
             const results = [];
@@ -41,9 +43,11 @@ serve(async (req) => {
                         });
 
                         if (twRes.ok) {
+                            console.log(`SMS successfully sent to ${phoneNumber}`);
                             results.push({ toolCallId: tc.id, result: "SMS sent successfully" });
                         } else {
                             const errTxt = await twRes.text();
+                            console.error(`Twilio Error for ${phoneNumber}: ${errTxt}`);
                             results.push({ toolCallId: tc.id, error: "Twilio Error: " + errTxt });
                         }
                     } else {
