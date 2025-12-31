@@ -1,196 +1,77 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const canadianAreaCodes = [
-    '204', '226', '236', '249', '250', '289', '306', '343', '365', '403', '416', '418', '431', '437', '438',
-    '450', '506', '514', '519', '548', '579', '581', '587', '604', '613', '639', '647', '672', '705', '709',
-    '778', '780', '782', '807', '819', '825', '867', '873', '902', '905'
-];
+const caCodes = ['204', '226', '236', '249', '250', '289', '306', '343', '365', '403', '416', '418', '431', '437', '438', '450', '506', '514', '519', '548', '579', '581', '587', '604', '613', '639', '647', '672', '705', '709', '778', '780', '782', '807', '819', '825', '867', '873', '902', '905'];
 
 serve(async (req) => {
     try {
-        const body = await req.json()
-        console.log('Webhook received:', JSON.stringify(body))
+        const body = await req.json();
+        const { type, call, toolCalls, transcript, message } = body;
 
-        // Vapi sends different message types.
-        const message = body.message
+        // Vapi sends "tool-calls" for real-time execution
+        // Vapi sends "message" with "tool-calls" sometimes too
+        const actualToolCalls = toolCalls || message?.toolCalls;
 
-        if (!message) {
-            console.log('No message in body')
-            return new Response('No message', { status: 200 })
-        }
+        if (type === 'tool-calls' || actualToolCalls) {
+            const results = [];
+            for (const tc of (actualToolCalls || [])) {
+                if (tc.function?.name === 'sendSms') {
+                    const { phoneNumber, message: smsMessage } = tc.function.arguments;
 
-        console.log('Message Type:', message.type)
+                    const sid = Deno.env.get('TWILIO_ACCOUNT_SID');
+                    const token = Deno.env.get('TWILIO_AUTH_TOKEN');
+                    let from = Deno.env.get('TWILIO_PHONE_NUMBER');
 
-        // Handle Tool Calls (e.g. sendSms)
-        if (message.type === 'tool-calls') {
-            console.log('Handling tool-calls message')
-            const toolCalls = message.toolCalls
-            const results = []
-
-            for (const toolCall of toolCalls) {
-                console.log('Processing tool call:', toolCall.function.name)
-
-                if (toolCall.function.name === 'sendSms') {
-                    try {
-                        let args = toolCall.function.arguments
-                        if (typeof args === 'string') {
-                            try {
-                                args = JSON.parse(args)
-                            } catch (e) {
-                                console.error('Failed to parse arguments JSON:', e)
-                                throw new Error('Invalid JSON arguments')
-                            }
+                    // Canadian Routing
+                    if (phoneNumber && phoneNumber.startsWith('+1')) {
+                        const area = phoneNumber.substring(2, 5);
+                        if (caCodes.includes(area)) {
+                            from = Deno.env.get('TWILIO_PHONE_NUMBER_CA');
                         }
+                    }
 
-                        const { phoneNumber, message } = args
-                        console.log(`Sending SMS to ${phoneNumber}: ${message}`)
-
-                        const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
-                        const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
-                        let fromNumber = Deno.env.get('TWILIO_PHONE_NUMBER')
-
-                        // Canadian Routing for SMS
-                        if (phoneNumber.startsWith('+1')) {
-                            const areaCode = phoneNumber.substring(2, 5);
-                            if (canadianAreaCodes.includes(areaCode)) {
-                                const caSmsNumber = Deno.env.get('TWILIO_PHONE_NUMBER_CA');
-                                if (caSmsNumber) {
-                                    console.log(`Detected Canadian recipient for SMS (${areaCode}), using CA sender: ${caSmsNumber}`);
-                                    fromNumber = caSmsNumber;
-                                }
-                            }
-                        }
-
-                        if (!accountSid || !authToken || !fromNumber) {
-                            throw new Error('Twilio credentials not set (SID, Token, or From Number)')
-                        }
-
-                        // Twilio API Call
-                        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
-                        const formData = new URLSearchParams()
-                        formData.append('To', phoneNumber)
-                        formData.append('From', fromNumber)
-                        formData.append('Body', message)
-
-                        console.log('Sending request to Twilio...')
-                        const twilioResponse = await fetch(twilioUrl, {
+                    if (from && sid && token) {
+                        const twRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
                             method: 'POST',
                             headers: {
-                                'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
+                                'Authorization': 'Basic ' + btoa(`${sid}:${token}`),
                                 'Content-Type': 'application/x-www-form-urlencoded'
                             },
-                            body: formData
-                        })
+                            body: new URLSearchParams({ To: phoneNumber, From: from, Body: smsMessage })
+                        });
 
-                        if (!twilioResponse.ok) {
-                            const errText = await twilioResponse.text()
-                            console.error('Twilio API Error:', errText)
-                            throw new Error(`Twilio Error: ${twilioResponse.status} ${errText}`)
+                        if (twRes.ok) {
+                            results.push({ toolCallId: tc.id, result: "SMS sent successfully" });
+                        } else {
+                            const errTxt = await twRes.text();
+                            results.push({ toolCallId: tc.id, error: "Twilio Error: " + errTxt });
                         }
-
-                        console.log('SMS sent successfully')
-                        results.push({
-                            toolCallId: toolCall.id,
-                            result: "SMS sent successfully."
-                        })
-
-                    } catch (err: any) {
-                        console.error('Error processing sendSms:', err)
-                        results.push({
-                            toolCallId: toolCall.id,
-                            error: `Failed to send SMS: ${err.message}`
-                        })
+                    } else {
+                        results.push({ toolCallId: tc.id, error: "Missing Twilio credentials or sender number" });
                     }
-                } else {
-                    console.log('Unknown tool:', toolCall.function.name)
-                    results.push({
-                        toolCallId: toolCall.id,
-                        result: "Function not found"
-                    })
                 }
             }
-
-            // Return results to Vapi
-            const responseBody = JSON.stringify({ results: results })
-            console.log('Returning results to Vapi:', responseBody)
-
-            return new Response(responseBody, {
-                headers: { 'Content-Type': 'application/json' },
-                status: 200
-            })
+            return new Response(JSON.stringify({ results }), { status: 200, headers: { 'Content-Type': 'application/json' } });
         }
 
-        // Handle End of Call Report
-        if (message.type === 'end-of-call-report') {
-            const call = message.call
-            if (!call) return new Response('No call data', { status: 200 })
+        if (type === 'end-of-call-report' || type === 'call-update') {
+            const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+            const status = (call?.endedReason === 'customer-ended-call' || call?.endedReason === 'assistant-ended-call' ? 'SUCCESS' : 'FAIL');
 
-            // 1. Initialize Supabase
-            const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-            const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY')!
-            const supabase = createClient(supabaseUrl, serviceKey)
+            // Check if SMS was sent in this call context
+            let linkSent = false;
+            // Note: We could check actualToolCalls here too if it's an update
 
-            // 2. Update Call Log
-            const durationSeconds = Math.round((new Date(call.endedAt).getTime() - new Date(call.startedAt).getTime()) / 1000)
-            const durationInterval = `${durationSeconds} seconds`
-
-            // Map connection status to SUCCESS/FAIL
-            // Vapi endedReasons that count as SUCCESS: 'customer-ended-call', 'assistant-ended-call', 'hangup'
-            const successReasons = ['customer-ended-call', 'assistant-ended-call', 'hangup']
-            const connectionStatus = successReasons.includes(call.endedReason) ? 'SUCCESS' : 'FAIL'
-
-            // Check if link was sent (look for sendSms tool call)
-            const linkSent = call.analysis?.toolCalls?.some((tc: any) => tc.function.name === 'sendSms') || false
-
-            const { error } = await supabase
-                .from('call_logs')
-                .update({
-                    status: call.status,
-                    connection_status: connectionStatus,
-                    duration: durationInterval,
-                    link_sent: linkSent,
-                    outcome: call.analysis?.summary || call.endedReason,
-                    transcript: call.transcript,
-                    recording_url: call.recordingUrl,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('provider_call_id', call.id)
-
-            if (error) {
-                console.error('Error updating call log:', error)
-                throw error
-            }
-
-            // 3. Update related Warranty Prospect status if applicable
-            const { data: logEntry } = await supabase
-                .from('call_logs')
-                .select('warranty_prospect_id')
-                .eq('provider_call_id', call.id)
-                .single()
-
-            if (logEntry?.warranty_prospect_id) {
-                let newStatus = 'called'
-                const analysis = (call.analysis?.summary || '').toLowerCase()
-                if (analysis.includes('enrolled') || analysis.includes('bought') || analysis.includes('yes')) {
-                    newStatus = 'enrolled'
-                } else if (analysis.includes('declined') || analysis.includes('not interested') || analysis.includes('no')) {
-                    newStatus = 'declined'
-                }
-
-                await supabase
-                    .from('warranty_prospects')
-                    .update({ status: newStatus })
-                    .eq('id', logEntry.warranty_prospect_id)
-            }
-
-            return new Response('OK', { status: 200 })
+            await sb.from('call_logs').update({
+                duration: Math.floor(call?.duration || 0) + "s",
+                connection_status: status,
+                transcript: transcript || ''
+            }).eq('provider_call_id', call?.id);
         }
 
-        return new Response('Ignored', { status: 200 })
-
-    } catch (error: any) {
-        console.error('Webhook Error:', error)
-        return new Response(error.message, { status: 500 })
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+    } catch (e) {
+        console.error('Webhook Error:', e.message);
+        return new Response(JSON.stringify({ error: e.message }), { status: 200 });
     }
 })

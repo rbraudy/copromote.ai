@@ -28,6 +28,10 @@ export const DemoCallModal: React.FC<DemoCallModalProps> = ({ isOpen, onClose })
                 }
             });
 
+            if (error) {
+                throw new Error(error.message || 'Supabase function invocation failed');
+            }
+
             if (data?.success) {
                 setIsSuccess(true);
                 setTimeout(() => {
@@ -37,9 +41,11 @@ export const DemoCallModal: React.FC<DemoCallModalProps> = ({ isOpen, onClose })
                     setCustomerName('');
                 }, 3000);
             } else {
-                throw new Error(data?.error || 'Failed to start call');
+                console.error('Function returned error:', data);
+                throw new Error(data?.error || 'Failed to start call. Check Supabase logs.');
             }
         } catch (err: any) {
+            console.error('Call initialization catch:', err);
             alert(err.message);
         } finally {
             setIsCalling(false);
