@@ -30,7 +30,7 @@ const Hero: React.FC = () => {
                         onClick={() => setIsDemoOpen(true)}
                         className="w-full sm:w-auto px-12 py-4 bg-white/10 text-white text-lg font-bold rounded-xl border border-white/20 hover:bg-white/20 transition duration-300 transform hover:scale-[1.02] flex items-center justify-center gap-2"
                     >
-                        Henry's AI Call
+                        Make Warranty Call
                     </button>
                 </div>
 
