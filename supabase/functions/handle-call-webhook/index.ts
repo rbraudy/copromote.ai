@@ -18,7 +18,11 @@ serve(async (req) => {
             const results = [];
             for (const tc of (actualToolCalls || [])) {
                 if (tc.function?.name === 'sendSms') {
-                    const { phoneNumber, message: smsMessage } = tc.function.arguments;
+                    // FIX: Vapi sends arguments as a JSON string
+                    const args = typeof tc.function.arguments === 'string'
+                        ? JSON.parse(tc.function.arguments)
+                        : tc.function.arguments;
+                    const { phoneNumber, message: smsMessage } = args;
 
                     const sid = Deno.env.get('TWILIO_ACCOUNT_SID');
                     const token = Deno.env.get('TWILIO_AUTH_TOKEN');
@@ -45,6 +49,16 @@ serve(async (req) => {
                         if (twRes.ok) {
                             console.log(`SMS successfully sent to ${phoneNumber}`);
                             results.push({ toolCallId: tc.id, result: "SMS sent successfully" });
+
+                            // Optional: Update DB that SMS was sent
+                            try {
+                                const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+                                await sb.from('call_logs').update({
+                                    communication_sent: 'Sent SMS with link'
+                                }).eq('provider_call_id', call?.id || message?.call?.id || body.call?.id);
+                            } catch (dbErr) {
+                                console.error('Database logging error:', dbErr);
+                            }
                         } else {
                             const errTxt = await twRes.text();
                             console.error(`Twilio Error for ${phoneNumber}: ${errTxt}`);
@@ -61,10 +75,6 @@ serve(async (req) => {
         if (type === 'end-of-call-report' || type === 'call-update') {
             const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
             const status = (call?.endedReason === 'customer-ended-call' || call?.endedReason === 'assistant-ended-call' ? 'SUCCESS' : 'FAIL');
-
-            // Check if SMS was sent in this call context
-            let linkSent = false;
-            // Note: We could check actualToolCalls here too if it's an update
 
             await sb.from('call_logs').update({
                 duration: Math.floor(call?.duration || 0) + "s",
