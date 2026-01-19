@@ -108,10 +108,19 @@ function DashboardLayout() {
     );
 }
 
+import NewDesign from './pages/NewDesign';
+import HelpFeatures from './pages/HelpFeatures';
+import HelpPricing from './pages/HelpPricing';
+import HelpCheckout from './pages/HelpCheckout';
+
 function App() {
     return (
         <BrowserRouter>
             <Routes>
+                <Route path="/design-v2" element={<NewDesign />} />
+                <Route path="/help" element={<HelpFeatures />} />
+                <Route path="/help/pricing" element={<HelpPricing />} />
+                <Route path="/help/checkout" element={<HelpCheckout />} />
                 <Route path="/*" element={<DashboardLayout />} />
             </Routes>
         </BrowserRouter>

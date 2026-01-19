@@ -82,7 +82,7 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
         setCallingId(prospect.id);
 
         try {
-            const { data, error } = await supabase.functions.invoke('make-warranty-call', {
+            const { data, error } = await supabase.functions.invoke('make-warranty-call-v2', {
                 body: {
                     prospectId: prospect.id,
                     phone: prospect.phone,

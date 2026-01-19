@@ -175,8 +175,11 @@ serve(async (req) => {
                     model: "nova-2",
                     language: "en"
                 },
-                voice: "jennifer-playht", // Example voice
-                serverUrl: Deno.env.get('SUPABASE_URL') + '/functions/v1/handle-call-webhook'
+                voice: {
+                    provider: "11labs",
+                    voiceId: "jBzLvP03992lMFEkj2kJ"
+                },
+                serverUrl: Deno.env.get('SUPABASE_URL') + '/functions/v1/handle-call-webhook-v2'
             }
         }
 

@@ -8,6 +8,7 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],
+                henrys: ['Montserrat', 'sans-serif'],
             },
             colors: {
                 'primary-dark': '#0F172A', // Slate 900

@@ -19,7 +19,7 @@ export const DemoCallModal: React.FC<DemoCallModalProps> = ({ isOpen, onClose })
         e.preventDefault();
         setIsCalling(true);
         try {
-            const { data, error } = await supabase.functions.invoke('make-warranty-call', {
+            const { data, error } = await supabase.functions.invoke('make-warranty-call-v2', {
                 body: {
                     phone,
                     customerName: customerName || 'Valued Customer',
@@ -62,7 +62,7 @@ export const DemoCallModal: React.FC<DemoCallModalProps> = ({ isOpen, onClose })
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-white">Make Warranty Call</h2>
-                            <p className="text-xs text-slate-400">Experience Paige's Warranty Pitch</p>
+                            <p className="text-xs text-slate-400">Experience Claire's Warranty Pitch</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
@@ -104,7 +104,7 @@ export const DemoCallModal: React.FC<DemoCallModalProps> = ({ isOpen, onClose })
                                     onChange={(e) => setPhone(e.target.value)}
                                     required
                                 />
-                                <p className="mt-2 text-[10px] text-slate-500 italic"> Paige will call this number for a demo pitch. </p>
+                                <p className="mt-2 text-[10px] text-slate-500 italic"> Claire will call this number for a demo pitch. </p>
                             </div>
 
                             <button

@@ -32,11 +32,18 @@ serve(async (req) => {
                     if (phoneNumber && phoneNumber.startsWith('+1')) {
                         const area = phoneNumber.substring(2, 5);
                         if (caCodes.includes(area)) {
-                            from = Deno.env.get('TWILIO_PHONE_NUMBER_CA');
+                            const caNumber = Deno.env.get('TWILIO_PHONE_NUMBER_CA');
+                            if (caNumber) from = caNumber;
                         }
                     }
 
+                    // Helper: Normalize sender number for Twilio (must start with +)
+                    if (from && !from.startsWith('+')) {
+                        from = from.length === 10 ? `+1${from}` : `+${from}`;
+                    }
+
                     if (from && sid && token) {
+                        console.log(`Attempting to send SMS from: ${from} to: ${phoneNumber}`);
                         const twRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
                             method: 'POST',
                             headers: {

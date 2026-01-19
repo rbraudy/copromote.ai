@@ -30,6 +30,13 @@ serve(async (req) => {
             throw new Error(`Missing Twilio credentials: SID=${!!sid}, Token=${!!token}, From=${from}`);
         }
 
+        // Helper: Normalize sender number for Twilio (must start with +)
+        if (from && !from.startsWith('+')) {
+            from = from.length === 10 ? `+1${from}` : `+${from}`;
+        }
+
+        console.log(`Sending test SMS from: ${from} to: ${to}`);
+
         const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
         const res = await fetch(url, {
             method: 'POST',

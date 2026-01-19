@@ -167,7 +167,7 @@ export const ShareProposalModal = ({ isOpen, onClose, lead, onUpdate, initialSel
 
         setIsCalling(true);
         try {
-            const { data, error } = await supabase.functions.invoke('make-call', {
+            const { data, error } = await supabase.functions.invoke('make-call-v2', {
                 body: {
                     leadId: lead.id,
                     proposalId: proposalToPitch.id,
