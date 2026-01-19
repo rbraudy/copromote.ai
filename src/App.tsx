@@ -14,6 +14,10 @@ import ProductCatalog from './components/Dashboard/ProductCatalog';
 import { Leads } from './components/Dashboard/Leads';
 import { ProposalsList } from './components/Dashboard/ProposalsList';
 import { WarrantyDashboard } from './components/Dashboard/WarrantyDashboard';
+import NewDesign from './pages/NewDesign';
+import HelpFeatures from './pages/HelpFeatures';
+import HelpPricing from './pages/HelpPricing';
+import HelpCheckout from './pages/HelpCheckout';
 
 function DashboardLayout() {
     const [user, setUser] = useState<User | null>(null);
@@ -108,10 +112,7 @@ function DashboardLayout() {
     );
 }
 
-import NewDesign from './pages/NewDesign';
-import HelpFeatures from './pages/HelpFeatures';
-import HelpPricing from './pages/HelpPricing';
-import HelpCheckout from './pages/HelpCheckout';
+// Imports moved to top
 
 function App() {
     return (

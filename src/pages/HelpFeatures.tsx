@@ -53,9 +53,7 @@ const HelpFeatures = () => {
         }
     ];
 
-    const mockCheckout = () => {
-        alert("Proceeding to checkout...");
-    };
+
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-henrys text-slate-900 dark:text-slate-100">
@@ -135,7 +133,7 @@ const HelpFeatures = () => {
                         Don't wait until it's too late. Add H.E.L.P. to your cart today.
                     </p>
                     <button
-                        onClick={mockCheckout}
+                        onClick={() => navigate('/help/pricing')}
                         className="px-12 py-4 bg-black dark:bg-white text-white dark:text-black font-black uppercase tracking-wider rounded-sm transition-all hover:bg-orange-600 dark:hover:bg-orange-600 dark:hover:text-white"
                     >
                         Buy Now
