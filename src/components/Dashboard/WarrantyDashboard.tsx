@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, PhoneCall, Loader2, FileText, Calendar, AlertCircle } from 'lucide-react';
+import { Clock, PhoneCall, Loader2, FileText, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { User } from 'firebase/auth';
 import { CallTranscriptModal } from './CallTranscriptModal';
@@ -82,7 +82,7 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
         setCallingId(prospect.id);
 
         try {
-            const { data, error } = await supabase.functions.invoke('make-warranty-call-v2', {
+            const { error } = await supabase.functions.invoke('make-warranty-call-v2', {
                 body: {
                     prospectId: prospect.id,
                     phone: prospect.phone,

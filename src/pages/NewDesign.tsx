@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import {
-    ArrowRight, Shield, TrendingUp, Users,
+    ArrowRight, TrendingUp, Users,
     BarChart3, Upload, Play, CheckCircle2,
-    Clock, Zap, BrainCircuit, MessageSquare
+    Zap, BrainCircuit, MessageSquare
 } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import Header from '../components/Layout/Header';
 import SignInModal from '../components/Auth/SignInModal';
-import SignUpModal from '../components/Auth/SignUpModal'; // Keeping for reference
+// import SignUpModal from '../components/Auth/SignUpModal'; // Keeping for reference
 import WarrantySignUpModal from '../components/Auth/WarrantySignUpModal';
 import { DemoCallModal } from '../components/Dashboard/DemoCallModal';
 
@@ -116,7 +116,7 @@ const NewDesign = () => {
                             </div>
                             <h3 className="text-xl font-bold mb-4">Self-Optimizing Loops</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                Our agents listen, evaluate, and learn from every interaction, automatically improving sales techniques after each call.
+                                Our agents listen, evaluate, and learn from every interaction, automatically improving sales techniques during and after each call.
                             </p>
                         </div>
                         <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">

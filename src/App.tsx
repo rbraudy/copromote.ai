@@ -9,7 +9,7 @@ import Features from './components/Sections/Features';
 import Distribution from './components/Sections/Distribution';
 import CTA from './components/Sections/CTA';
 import SignInModal from './components/Auth/SignInModal';
-import SignUpModal from './components/Auth/SignUpModal'; // Keeping for reference/future use
+// import SignUpModal from './components/Auth/SignUpModal'; // Keeping for reference/future use
 import WarrantySignUpModal from './components/Auth/WarrantySignUpModal';
 import { WarrantyDashboard } from './components/Dashboard/WarrantyDashboard';
 import NewDesign from './pages/NewDesign';
