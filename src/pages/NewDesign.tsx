@@ -8,7 +8,8 @@ import { auth } from '../lib/firebase';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import Header from '../components/Layout/Header';
 import SignInModal from '../components/Auth/SignInModal';
-import SignUpModal from '../components/Auth/SignUpModal';
+import SignUpModal from '../components/Auth/SignUpModal'; // Keeping for reference
+import WarrantySignUpModal from '../components/Auth/WarrantySignUpModal';
 import { DemoCallModal } from '../components/Dashboard/DemoCallModal';
 
 const NewDesign = () => {
@@ -92,13 +93,23 @@ const NewDesign = () => {
                     setIsSignInOpen(false);
                 }}
             />
-            <SignUpModal isOpen={isSignUpOpen} onClose={() => setIsSignUpOpen(false)} />
+            <WarrantySignUpModal isOpen={isSignUpOpen} onClose={() => setIsSignUpOpen(false)} />
+            {/* <SignUpModal isOpen={isSignUpOpen} onClose={() => setIsSignUpOpen(false)} /> */}
             <DemoCallModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
 
             {/* Value Prop Grid */}
             <section id="features" className="py-24 border-t border-white/5 bg-slate-950">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="grid md:grid-cols-3 gap-8">
+                        <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
+                            <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <TrendingUp className="text-emerald-500 w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-4">World Class Sales Experts</h3>
+                            <p className="text-slate-400 text-sm leading-relaxed">
+                                Our agents leverage industry-leading best practices and real-world expertise to deliver high-impact results for your business, consistently and at scale.
+                            </p>
+                        </div>
                         <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
                             <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                 <BrainCircuit className="text-blue-500 w-6 h-6" />
@@ -115,15 +126,6 @@ const NewDesign = () => {
                             <h3 className="text-xl font-bold mb-4">Persona-Matched Sales</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
                                 Dynamically adjusts tone, speed, and pitch based on the customer's market and individual persona for maximum conversion.
-                            </p>
-                        </div>
-                        <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
-                            <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                <TrendingUp className="text-emerald-500 w-6 h-6" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-4">Reduced Acquisition Costs</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed">
-                                Fully automated 24/7 sales operations that outperform traditional call centers at a fraction of the cost.
                             </p>
                         </div>
                     </div>
@@ -278,7 +280,7 @@ const NewDesign = () => {
             <footer className="py-12 border-t border-white/5 text-center text-slate-500 text-sm">
                 <p>&copy; 2026 CoPromote.ai - The Future of Warranty Sales</p>
             </footer>
-        </div>
+        </div >
     );
 };
 

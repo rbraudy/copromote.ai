@@ -84,7 +84,7 @@ export const DemoCallModal: React.FC<DemoCallModalProps> = ({ isOpen, onClose })
                     ) : (
                         <form onSubmit={handleCall} className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">Your Name</label>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Customer Name</label>
                                 <input
                                     type="text"
                                     placeholder="Jane Doe"

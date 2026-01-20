@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { DemoCallModal } from '../Dashboard/DemoCallModal';
 
-const Hero: React.FC = () => {
+interface HeroProps {
+    onSignUpClick: () => void;
+}
+
+const Hero: React.FC<HeroProps> = ({ onSignUpClick }) => {
     const [isDemoOpen, setIsDemoOpen] = useState(false);
     return (
         <section className="bg-hero-gradient pt-32 pb-24 text-center">
@@ -19,12 +23,12 @@ const Hero: React.FC = () => {
 
                 {/* Main CTA */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <a
-                        href="#demo"
+                    <button
+                        onClick={onSignUpClick}
                         className="w-full sm:w-auto px-12 py-4 bg-accent-purple text-lg font-bold rounded-xl shadow-2xl shadow-violet-500/50 hover:bg-violet-600 transition duration-300 transform hover:scale-[1.02]"
                     >
                         Start Generating Sales
-                    </a>
+                    </button>
                 </div>
 
                 <DemoCallModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />

@@ -9,10 +9,8 @@ import Features from './components/Sections/Features';
 import Distribution from './components/Sections/Distribution';
 import CTA from './components/Sections/CTA';
 import SignInModal from './components/Auth/SignInModal';
-import SignUpModal from './components/Auth/SignUpModal';
-import ProductCatalog from './components/Dashboard/ProductCatalog';
-import { Leads } from './components/Dashboard/Leads';
-import { ProposalsList } from './components/Dashboard/ProposalsList';
+import SignUpModal from './components/Auth/SignUpModal'; // Keeping for reference/future use
+import WarrantySignUpModal from './components/Auth/WarrantySignUpModal';
 import { WarrantyDashboard } from './components/Dashboard/WarrantyDashboard';
 import NewDesign from './pages/NewDesign';
 import HelpFeatures from './pages/HelpFeatures';
@@ -23,7 +21,6 @@ function DashboardLayout() {
     const [user, setUser] = useState<User | null>(null);
     const [isSignInOpen, setIsSignInOpen] = useState(false);
     const [isSignUpOpen, setIsSignUpOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'products' | 'partners' | 'proposals' | 'warranty'>('products');
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -51,50 +48,14 @@ function DashboardLayout() {
             <main className="flex-grow">
                 {user ? (
                     <div className="container mx-auto px-4 pt-24 pb-8">
-                        {/* Dashboard Tabs */}
-                        <div className="flex gap-4 mb-6 border-b">
-                            <button
-                                onClick={() => setActiveTab('products')}
-                                className={`pb-2 px-4 ${activeTab === 'products' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
-                            >
-                                My Products
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('partners')}
-                                className={`pb-2 px-4 ${activeTab === 'partners' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
-                            >
-                                Partners
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('proposals')}
-                                className={`pb-2 px-4 ${activeTab === 'proposals' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
-                            >
-                                Promotions
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('warranty')}
-                                className={`pb-2 px-4 ${activeTab === 'warranty' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
-                            >
-                                Warranty Leads
-                            </button>
-                        </div>
-
-                        {activeTab === 'products' ? (
-                            <ProductCatalog user={user} />
-                        ) : activeTab === 'partners' ? (
-                            <Leads user={user} />
-                        ) : activeTab === 'proposals' ? (
-                            <ProposalsList user={user} />
-                        ) : (
-                            <WarrantyDashboard user={user} />
-                        )}
+                        <WarrantyDashboard user={user} />
                     </div>
                 ) : (
                     <>
-                        <Hero />
+                        <Hero onSignUpClick={() => setIsSignUpOpen(true)} />
                         <Features />
                         <Distribution />
-                        <CTA />
+                        <CTA onSignUpClick={() => setIsSignUpOpen(true)} />
                     </>
                 )}
             </main>
@@ -107,7 +68,8 @@ function DashboardLayout() {
                     setIsSignInOpen(false);
                 }}
             />
-            <SignUpModal isOpen={isSignUpOpen} onClose={() => setIsSignUpOpen(false)} />
+            <WarrantySignUpModal isOpen={isSignUpOpen} onClose={() => setIsSignUpOpen(false)} />
+            {/* <SignUpModal isOpen={isSignUpOpen} onClose={() => setIsSignUpOpen(false)} /> */}
         </div>
     );
 }
