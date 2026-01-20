@@ -16,7 +16,7 @@ serve(async (req) => {
         const url = new URL(req.url);
         const callLogId = url.searchParams.get('id');
         const prospectId = url.searchParams.get('prospectId');
-        const redirectUrl = url.searchParams.get('redirect') || 'https://henrys.com/protection-plans';
+        const redirectUrl = url.searchParams.get('redirect') || 'https://copromote.ai/henrys';
 
         // 1. Initialize Supabase
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

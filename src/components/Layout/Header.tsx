@@ -29,7 +29,7 @@ const Header: React.FC<HeaderProps> = ({ onSignInClick, onSignUpClick, onSignOut
                 {/* Desktop Nav */}
                 <nav className="hidden md:flex items-center gap-8">
                     <a href="#features" className="text-slate-600 dark:text-slate-300 hover:text-accent-blue transition-colors">Features</a>
-                    <a href="/help" className="text-slate-600 dark:text-slate-300 hover:text-accent-blue transition-colors">Warranty</a>
+                    <a href="/henrys" className="text-slate-600 dark:text-slate-300 hover:text-accent-blue transition-colors">Warranty</a>
                     <a href="#how-it-works" className="text-slate-600 dark:text-slate-300 hover:text-accent-blue transition-colors">How it Works</a>
                     <a href="#pricing" className="text-slate-600 dark:text-slate-300 hover:text-accent-blue transition-colors">Pricing</a>
 

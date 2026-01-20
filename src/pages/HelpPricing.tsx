@@ -62,7 +62,7 @@ const HelpPricing = () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleSelectPlan = (plan: any) => {
-        navigate('/help/checkout', { state: { plan } });
+        navigate('/henrys/checkout', { state: { plan } });
     };
 
     return (

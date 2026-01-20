@@ -16,7 +16,7 @@ const HelpCheckout = () => {
         setTimeout(() => {
             setIsProcessing(false);
             alert('Purchase successful! (Mock)');
-            navigate('/help');
+            navigate('/henrys');
         }, 2000);
     };
 

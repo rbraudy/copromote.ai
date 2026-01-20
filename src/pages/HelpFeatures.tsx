@@ -73,7 +73,7 @@ const HelpFeatures = () => {
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <button
-                            onClick={() => navigate('/help/pricing')}
+                            onClick={() => navigate('/henrys/pricing')}
                             className="px-8 py-4 bg-orange-600 hover:bg-orange-700 text-white font-black uppercase tracking-wider rounded-sm transition-all shadow-lg hover:shadow-orange-600/25 flex items-center justify-center gap-2 transform hover:-translate-y-1"
                         >
                             See Pricing <Shield size={20} />
@@ -133,7 +133,7 @@ const HelpFeatures = () => {
                         Don't wait until it's too late. Add H.E.L.P. to your cart today.
                     </p>
                     <button
-                        onClick={() => navigate('/help/pricing')}
+                        onClick={() => navigate('/henrys/pricing')}
                         className="px-12 py-4 bg-black dark:bg-white text-white dark:text-black font-black uppercase tracking-wider rounded-sm transition-all hover:bg-orange-600 dark:hover:bg-orange-600 dark:hover:text-white"
                     >
                         Buy Now

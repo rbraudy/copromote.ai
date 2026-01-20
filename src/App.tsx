@@ -72,9 +72,9 @@ function App() {
         <BrowserRouter>
             <Routes>
                 <Route path="/design-v2" element={<NewDesign />} />
-                <Route path="/help" element={<HelpFeatures />} />
-                <Route path="/help/pricing" element={<HelpPricing />} />
-                <Route path="/help/checkout" element={<HelpCheckout />} />
+                <Route path="/henrys" element={<HelpFeatures />} />
+                <Route path="/henrys/pricing" element={<HelpPricing />} />
+                <Route path="/henrys/checkout" element={<HelpCheckout />} />
                 <Route path="/*" element={<DashboardLayout />} />
             </Routes>
         </BrowserRouter>
