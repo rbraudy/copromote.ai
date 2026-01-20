@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, PhoneCall, Loader2, FileText, AlertCircle } from 'lucide-react';
+import { Clock, PhoneCall, Loader2, FileText, AlertCircle, PlayCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { User } from 'firebase/auth';
 import { CallTranscriptModal } from './CallTranscriptModal';
+import { DemoCallModal } from './DemoCallModal';
 
 const getStatusColor = (status: string) => {
     switch (status) {
@@ -36,6 +37,7 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [callingId, setCallingId] = useState<string | null>(null);
     const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
+    const [isDemoOpen, setIsDemoOpen] = useState(false);
     const [selectedProspectId, setSelectedProspectId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -123,6 +125,13 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
                     </h1>
                     <p className="text-slate-400 mt-1">Real-time tracking of AI outreach and conversion</p>
                 </div>
+                <button
+                    onClick={() => setIsDemoOpen(true)}
+                    className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border border-white/10"
+                >
+                    <PlayCircle size={18} className="text-blue-400" />
+                    Test Demo Call
+                </button>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
@@ -222,6 +231,13 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
                     <div className="p-20 text-center flex flex-col items-center gap-4">
                         <AlertCircle className="text-slate-700" size={48} />
                         <p className="text-slate-500 italic max-w-xs text-sm">No warranty prospects found in your sales history yet.</p>
+                        <button
+                            onClick={() => setIsDemoOpen(true)}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20"
+                        >
+                            <PlayCircle size={20} />
+                            Start a Demo Call
+                        </button>
                     </div>
                 )}
             </div>
@@ -233,6 +249,11 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
                     setSelectedProspectId(null);
                 }}
                 prospectId={selectedProspectId || ''}
+            />
+
+            <DemoCallModal
+                isOpen={isDemoOpen}
+                onClose={() => setIsDemoOpen(false)}
             />
         </div>
     );
