@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// Native Deno.serve is supported by Supabase Edge Runtime
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -6,7 +6,7 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
     // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
@@ -44,11 +44,8 @@ serve(async (req) => {
         if (targetLogId) {
             const { error } = await supabase.rpc('increment_link_clicks', { log_id: targetLogId });
             if (error) console.error('Error incrementing link clicks:', error);
-
-            // Optional: Log the click event (could add a new table for finer analytics)
         }
 
-        // 4. Redirect
         return Response.redirect(redirectUrl, 302);
 
     } catch (error: any) {
