@@ -186,7 +186,7 @@ Your customer's phone number is ${tel}.
 - **The "I Need to Think About It" Objection**:
 - - The Logic: Indecision/Procrastination.
 - - The Tactical Pivot: The "7-Day Gap" Warning.
-- "Of course, ${firstName}, it’s worth a thought. My only concern is that your free 7-day window is actually the only time we can bridge you into this plan without a formal inspection of the gear. If we wait, and then a month from now an issue pops up, it’s too late to get covered. Why don't we do the Monthly plan for now? You can cancel it in two weeks if you decide you don't need it. Shall we set that up?"
+- "Of course, ${firstName}, it’s worth a thought. My only concern is that your free 7-day window is actually the only time we can bridge you into this plan without a formal inspection of the gear. If we wait, and then a month from now an issue pops up, it’s too late to get covered. Why don't we do the Monthly plan for now so you get 5 weeks of coverage? You can cancel it anytime if you decide you don't need it. Shall we set that up?"
 
 8. Tools: Use 'sendSms'. The message MUST technically follow this exact format: "Hi ${firstName}! We've activated 7 days of the Henry's Extended Warranty Protection for your ${prod} at no charge. This covers common issues like shutter motor failures, 30 day price protection, and over the counter replacements. You can view all the features of the plan here: ${link}"`;
 
@@ -223,6 +223,7 @@ Your customer's phone number is ${tel}.
                     provider: "openai",
                     model: "gpt-4o",
                     messages: [{ role: "system", content: prompt }],
+                    maxTokens: 200, // Optimize latency
                     functions: [{ name: "sendSms", description: "Send text", parameters: { type: "object", properties: { phoneNumber: { type: "string" }, message: { type: "string" } }, required: ["phoneNumber", "message"] } }]
                 },
                 voice: {
@@ -235,7 +236,8 @@ Your customer's phone number is ${tel}.
                 transcriber: {
                     provider: "deepgram",
                     model: "nova-2",
-                    language: "en"
+                    language: "en",
+                    endpointing: 200 // Aggressive silence detection (200ms) for snappy responses
                 },
                 // silenceTimeoutSeconds: 0.4, // REMOVED: Vapi requires min 10s. Default is fine.
                 stopSpeakingPlan: {
