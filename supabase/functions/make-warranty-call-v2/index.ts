@@ -237,7 +237,7 @@ Your customer's phone number is ${tel}.
                     provider: "deepgram",
                     model: "nova-2",
                     language: "en",
-                    endpointing: 200 // Aggressive silence detection (200ms) for snappy responses
+                    endpointing: 400 // Balanced silence detection (400ms)
                 },
                 // silenceTimeoutSeconds: 0.4, // REMOVED: Vapi requires min 10s. Default is fine.
                 stopSpeakingPlan: {

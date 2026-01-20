@@ -4,10 +4,6 @@ import { auth } from './lib/firebase';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import Header from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
-import Hero from './components/Sections/Hero';
-import Features from './components/Sections/Features';
-import Distribution from './components/Sections/Distribution';
-import CTA from './components/Sections/CTA';
 import SignInModal from './components/Auth/SignInModal';
 // import SignUpModal from './components/Auth/SignUpModal'; // Keeping for reference/future use
 import WarrantySignUpModal from './components/Auth/WarrantySignUpModal';
@@ -51,12 +47,7 @@ function DashboardLayout() {
                         <WarrantyDashboard user={user} />
                     </div>
                 ) : (
-                    <>
-                        <Hero onSignUpClick={() => setIsSignUpOpen(true)} />
-                        <Features />
-                        <Distribution />
-                        <CTA onSignUpClick={() => setIsSignUpOpen(true)} />
-                    </>
+                    <NewDesign />
                 )}
             </main>
             <Footer />

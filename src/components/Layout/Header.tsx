@@ -19,12 +19,12 @@ const Header: React.FC<HeaderProps> = ({ onSignInClick, onSignUpClick, onSignOut
     return (
         <header className="fixed w-full top-0 z-50 bg-white/80 dark:bg-primary-dark/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-800">
             <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <a href="/" className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-gradient-to-br from-accent-blue to-accent-purple rounded-lg flex items-center justify-center">
                         <span className="text-white font-bold text-xl">C</span>
                     </div>
                     <span className="text-xl font-bold text-slate-900 dark:text-white">CoPromote</span>
-                </div>
+                </a>
 
                 {/* Desktop Nav */}
                 <nav className="hidden md:flex items-center gap-8">
