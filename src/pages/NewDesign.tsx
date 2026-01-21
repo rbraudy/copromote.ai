@@ -63,10 +63,10 @@ const NewDesign = () => {
                         WORLD'S MOST ADVANCED AI WARRANTY SALES AGENTS
                     </div>
                     <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent leading-[1.1]">
-                        Sell More Warranties <br />With AI That Closes.
+                        Sell More Extended Protection Plans <br />With AI That Closes.
                     </h1>
                     <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-                        Revolutionize your device and equipment warranty sales with autonomous AI agents that deliver the highest close rates in the market.
+                        Maximize your device and equipment warranty sales with expert AI agents that deliver the highest close rates in the market.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <button
@@ -100,32 +100,41 @@ const NewDesign = () => {
             {/* Value Prop Grid */}
             <section id="features" className="py-24 border-t border-white/5 bg-slate-950">
                 <div className="max-w-7xl mx-auto px-6">
-                    <div className="grid md:grid-cols-3 gap-8">
+                    <div className="grid md:grid-cols-2 gap-8">
                         <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
                             <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                 <TrendingUp className="text-emerald-500 w-6 h-6" />
                             </div>
-                            <h3 className="text-xl font-bold mb-4">World Class Sales Experts</h3>
+                            <h3 className="text-xl font-bold mb-4">Elite Sales Performance</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                Our agents leverage industry-leading best practices and real-world expertise to deliver high-impact results for your business, consistently and at scale.
+                                Forget generic chatbots. Our agents are programmed with top-tier sales methodologies (Challenger, Gap Selling) to consultative identify needs, handle objections, and <strong className="text-slate-200">close deals</strong> on the first call.
                             </p>
                         </div>
                         <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
                             <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                 <BrainCircuit className="text-blue-500 w-6 h-6" />
                             </div>
-                            <h3 className="text-xl font-bold mb-4">Self-Optimizing Loops</h3>
+                            <h3 className="text-xl font-bold mb-4">Auto-Optimizing Scripts</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                Our agents listen, evaluate, and learn from every interaction, automatically improving sales techniques during and after each call.
+                                The system learns what works in real-time. If "Pitch A" moves 2% more product than "Pitch B", the AI automatically shifts strategy to maximize revenue across your entire campaign.
+                            </p>
+                        </div>
+                        <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
+                            <div className="w-12 h-12 bg-yellow-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <Zap className="text-yellow-500 w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-4">Infinite, Instant Scale</h3>
+                            <p className="text-slate-400 text-sm leading-relaxed">
+                                Launch a 10,000-call campaign in minutes. No hiring, no training, no sick days. Just on-demand sales capacity that scales up or down instantly to match your inventory.
                             </p>
                         </div>
                         <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
                             <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                 <Users className="text-indigo-500 w-6 h-6" />
                             </div>
-                            <h3 className="text-xl font-bold mb-4">Persona-Matched Sales</h3>
+                            <h3 className="text-xl font-bold mb-4">Precision Targeting</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                Dynamically adjusts tone, speed, and pitch based on the customer's market and individual persona for maximum conversion.
+                                Every conversation is unique. The AI reads product purchase history and warranty gaps instantly, tailoring its pitch to the exact item the customer owns for maximum relevance.
                             </p>
                         </div>
                     </div>
