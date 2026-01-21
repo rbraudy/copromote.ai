@@ -66,7 +66,7 @@ const NewDesign = () => {
                         Sell More Extended Protection Plans <br />With AI That Closes.
                     </h1>
                     <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-                        Maximize your device and equipment warranty sales with expert AI agents that deliver the highest close rates in the market.
+                        Maximize your device and equipment warranty sales with expert AI agents that deliver the highest close rates in the industry.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <button
@@ -107,7 +107,7 @@ const NewDesign = () => {
                             </div>
                             <h3 className="text-xl font-bold mb-4">Elite Sales Performance</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                Forget generic chatbots. Our agents are programmed with top-tier sales methodologies (Challenger, Gap Selling) to consultative identify needs, handle objections, and <strong className="text-slate-200">close deals</strong> on the first call.
+                                Our agents employ leading sales methodologies (Challenger, Gap Selling) to consultatively identify needs, handle objections, and <strong className="text-slate-200">close deals</strong> on the first call.
                             </p>
                         </div>
                         <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
@@ -116,7 +116,7 @@ const NewDesign = () => {
                             </div>
                             <h3 className="text-xl font-bold mb-4">Auto-Optimizing Scripts</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                The system learns what works in real-time. If "Pitch A" moves 2% more product than "Pitch B", the AI automatically shifts strategy to maximize revenue across your entire campaign.
+                                The system learns what works in real-time and automatically shifts strategy to maximize revenue across your entire campaign.
                             </p>
                         </div>
                         <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
@@ -125,7 +125,7 @@ const NewDesign = () => {
                             </div>
                             <h3 className="text-xl font-bold mb-4">Infinite, Instant Scale</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                Launch a 10,000-call campaign in minutes. No hiring, no training, no sick days. Just on-demand sales capacity that scales up or down instantly to match your inventory.
+                                Launch thousands of calls in minutes. No hiring, no training, no sick days. Just on-demand sales capacity that scales up or down instantly to match your inventory.
                             </p>
                         </div>
                         <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
