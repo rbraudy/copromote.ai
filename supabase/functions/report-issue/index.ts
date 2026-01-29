@@ -58,42 +58,45 @@ serve(async (req) => {
         const colData = await colRes.json()
         const columns = colData.data?.boards?.[0]?.columns || []
 
-        // Find IDs for "Email" and "Phone" (case-insensitive try)
-        const emailCol = columns.find((c: any) => c.title.toLowerCase() === 'email')
-        const phoneCol = columns.find((c: any) => c.title.toLowerCase() === 'phone')
+        // Find IDs for columns (case-insensitive try)
+        const emailCol = columns.find((c: any) => c.title.toLowerCase() === 'email');
+        const phoneCol = columns.find((c: any) => c.title.toLowerCase() === 'phone');
+        const firstNameCol = columns.find((c: any) => c.title.toLowerCase() === 'first name' || c.title.toLowerCase() === 'firstname');
+        const lastNameCol = columns.find((c: any) => c.title.toLowerCase() === 'last name' || c.title.toLowerCase() === 'lastname');
+        const dateCol = columns.find((c: any) => c.title.toLowerCase() === 'date' || c.title.toLowerCase() === 'date created');
 
         const columnValues: any = {
           status: { label: "Working on it" },
-          // Try to put description in a text column if found, otherwise keep relying on update/comment
         }
 
-        // Add Email if column exists
+        // Split Name
+        let firstName = '';
+        let lastName = '';
+        if (customerName) {
+          const parts = customerName.split(' ');
+          firstName = parts[0];
+          lastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
+        }
+
+        // Map Columns
         if (emailCol) {
-          // Text column expects a string
-          columnValues[emailCol.id] = customerName + " (AI Contact)" // Fallback if no email arg, but we don't have email in body yet?
-          // Wait, we don't have email in the request body. We only have phone.
-          // User added "Email" column, but do we have the email?
-          // The prompt doesn't ask for email. 
-          // I'll leave it empty or put a placeholder if I don't have it.
-          // Actually, the user might expect me to Collect it? 
-          // For now, I'll handle "Phone".
+          // we don't have email in the request usually, but if we did:
+          // columnValues[emailCol.id] = { email: "example@test.com", text: "example@test.com" }; // Email column format
+          // For now, leaving blank as we only have phone usually.
         }
 
-        // Add Phone if column exists
         if (phoneCol) {
-          // Number column expects a string representing a number or integer
-          // Clean phone number for Number column (remove +, spaces)
-          // But usually Number column is for quantities... Phone column type is 'phone'.
-          // User said "Column Type: Number". That is unusual for a phone number (formatting issues).
-          // But I will follow instructions and send digits only.
           if (customerPhone) {
             const numericPhone = customerPhone.replace(/\D/g, '')
+            // Phone column format: { phone: "+1...", countryShortName: "US" } or just string in some API versions
+            // Try string first, if fails we might need object
             columnValues[phoneCol.id] = numericPhone
           }
         }
 
-        // Use a generic text column for description if possible, or just the item name
-        // We'll stick to the previous strategy for description (in the item name + update) to be safe
+        if (firstNameCol) columnValues[firstNameCol.id] = firstName;
+        if (lastNameCol) columnValues[lastNameCol.id] = lastName;
+        if (dateCol) columnValues[dateCol.id] = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
         const itemName = `Issue: ${issueType} - ${customerName || 'Unknown'}`
 

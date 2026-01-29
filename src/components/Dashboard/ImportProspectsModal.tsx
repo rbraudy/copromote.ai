@@ -80,42 +80,7 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
         });
     };
 
-    const ensureCompanyProfile = async (): Promise<string | null> => {
-        if (!user) return null;
-
-        // 1. Check if profile exists
-        const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('company_id')
-            .eq('user_id', user.uid)
-            .single();
-
-        if (profile?.company_id) return profile.company_id;
-
-        // 2. If not, create default Company and Profile (Lazy Init for MVP)
-        const { data: newCompany, error: companyError } = await supabase
-            .from('companies')
-            .insert({ name: `${user.email?.split('@')[0]}'s Company` })
-            .select()
-            .single();
-
-        if (companyError || !newCompany) {
-            console.error("Failed to create company", companyError);
-            return null;
-        }
-
-        const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-                user_id: user.uid,
-                company_id: newCompany.id,
-                role: 'admin'
-            });
-
-        if (profileError) console.error("Failed to create profile", profileError);
-
-        return newCompany.id;
-    };
+    // Removed ensureCompanyProfile usage for now (Multi-tenancy disabled)
 
     const processUpload = async () => {
         if (!parsedData.length || !user) return;
@@ -124,38 +89,82 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
         let failedCount = 0;
 
         try {
-            const companyId = await ensureCompanyProfile();
-            if (!companyId) throw new Error("Could not verify Company Profile. Please contact support.");
+            // Helper to find value by fuzzy key match
+            const getValue = (row: any, ...aliases: string[]) => {
+                const keys = Object.keys(row);
+                for (const alias of aliases) {
+                    // Exact match first
+                    if (row[alias] !== undefined && row[alias] !== '') return row[alias];
+
+                    // Case-insensitive match
+                    const keyCI = keys.find(k => k.toLowerCase() === alias.toLowerCase());
+                    if (keyCI && row[keyCI]) return row[keyCI];
+
+                    // Partial match (e.g., alias 'phone' matches 'Mobile Phone')
+                    const keyPartial = keys.find(k => k.toLowerCase().includes(alias.toLowerCase()));
+                    if (keyPartial && row[keyPartial]) return row[keyPartial];
+                }
+                return null;
+            };
 
             for (const row of parsedData) {
-                // Normalize keys (handle "Name" vs "Customer Name", etc.)
-                const name = row.CustomerName || row.Name;
-                const phone = row.Phone;
-                const product = row.Product || row.Item;
-                const email = row.Email || null;
-                // Default to today if missing, or handle undefined
-                const purchaseDate = row.PurchaseDate ? new Date(row.PurchaseDate) : new Date();
+                // Ignore completely empty rows to avoid spamming logs
+                if (Object.values(row).every(x => x === null || x === '')) continue;
+
+                // Log the first row to help debugging
+                if (row === parsedData[0]) console.log("First Row Data Keys:", Object.keys(row), row);
+
+                let name = getValue(row, 'Customer Name', 'Name', 'Customer', 'Client', 'Contact', 'Bill To', 'Ship To', 'Customer#', 'Owner');
+                const lastName = getValue(row, 'Last Name', 'Surname', 'Family Name');
+
+                // If we found a name AND a last name, and the name doesn't already look like a full name (has space), combine them
+                if (name && lastName && !name.includes(' ')) {
+                    name = `${name} ${lastName}`;
+                }
+
+                const phone = getValue(row, 'Phone', 'Mobile', 'Cell', 'Telephone', 'Tel', 'Contact Number');
+                const product = getValue(row, 'Product', 'Item', 'Description', 'Model', 'SKU', 'Material', 'Product Name');
+                const email = getValue(row, 'Email', 'E-mail', 'Mail');
+
+                // Purchase Date Parsing
+                const dateStr = getValue(row, 'Purchase Date', 'Date', 'Order Date', 'Invoice Date');
+                let purchaseDate = new Date();
+                if (dateStr) {
+                    const parsed = new Date(dateStr);
+                    if (!isNaN(parsed.getTime())) purchaseDate = parsed;
+                }
+
+                // Calculate Expiry Date (30 days from purchase)
+                // We add this manually because the database "Generated Column" seems to be missing/broken in the user's setup
+                // causing a "null value in expiry_date violates not-null" error.
+                const expiryDate = new Date(purchaseDate);
+                expiryDate.setDate(expiryDate.getDate() + 30);
 
                 if (!name || !phone || !product) {
+                    console.warn(`Skipping row due to missing data. Found: Name=${name}, Phone=${phone}, Product=${product}`, row);
                     failedCount++;
                     continue;
                 }
+
+                // Clean phone: Keep only digits and optional leading +
+                const cleanPhone = phone.toString().replace(/[^\d+]/g, '');
 
                 const { error: insertError } = await supabase
                     .from('warranty_prospects')
                     .insert({
                         seller_id: user.uid,
-                        company_id: companyId, // Tagging with Company ID
+                        company_id: null,
                         customer_name: name,
-                        phone: phone, // TODO: Normalize here if needed, or rely on function
+                        phone: cleanPhone,
                         product_name: product,
                         email: email,
                         purchase_date: purchaseDate.toISOString(),
+                        expiry_date: expiryDate.toISOString(), // Explicitly providing Expiry Date
                         status: 'new'
                     });
 
                 if (insertError) {
-                    console.error('Insert error:', insertError);
+                    console.error('Insert error details:', insertError);
                     failedCount++;
                 } else {
                     successCount++;
@@ -165,7 +174,6 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
             if (successCount > 0) {
                 setTimeout(() => {
                     onSuccess();
-                    // Optional: keep open to show stats or close automatically
                 }, 2000);
             }
         } catch (err: any) {

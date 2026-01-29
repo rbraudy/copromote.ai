@@ -10,18 +10,29 @@ serve(async (req) => {
 
         const { type, call, toolCalls, transcript, message } = body;
 
+        // Helper to get call object from various Vapi payload structures
+        const callObj = call || message?.call || body.call;
+        const typeObj = type || message?.type || body.type;
+
         // Vapi sends "tool-calls" for real-time execution
-        const actualToolCalls = toolCalls || message?.toolCalls;
+        const actualToolCalls = toolCalls || message?.toolCalls || callObj?.toolCalls;
         if (actualToolCalls) console.log(`Tool Calls detected: ${actualToolCalls.length}`);
 
-        if (type === 'tool-calls' || actualToolCalls) {
+        if (typeObj === 'tool-calls' || actualToolCalls) {
             const results = [];
             for (const tc of (actualToolCalls || [])) {
                 if (tc.function?.name === 'sendSms') {
                     // FIX: Vapi sends arguments as a JSON string
-                    const args = typeof tc.function.arguments === 'string'
-                        ? JSON.parse(tc.function.arguments)
-                        : tc.function.arguments;
+                    let args;
+                    try {
+                        args = typeof tc.function.arguments === 'string'
+                            ? JSON.parse(tc.function.arguments)
+                            : tc.function.arguments;
+                    } catch (e) {
+                        console.error('Failed to parse arguments:', tc.function.arguments);
+                        args = {};
+                    }
+                    console.log('Sending SMS. Payload:', JSON.stringify(args));
                     const { phoneNumber, message: smsMessage } = args;
 
                     const sid = Deno.env.get('TWILIO_ACCOUNT_SID');
@@ -124,31 +135,33 @@ serve(async (req) => {
             return new Response(JSON.stringify({ results }), { status: 200, headers: { 'Content-Type': 'application/json' } });
         }
 
-        if (type === 'end-of-call-report' || type === 'call-update') {
+        if (typeObj === 'end-of-call-report' || typeObj === 'call-update') {
             const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-            const status = (call?.endedReason === 'customer-ended-call' || call?.endedReason === 'assistant-ended-call' ? 'SUCCESS' : 'FAIL');
+            console.log(`Processing End of Call. Call ID: ${callObj?.id}`);
+            console.log(`Call Ended Reason: ${callObj?.endedReason}, Raw Duration: ${callObj?.duration}`);
+
+            const status = (callObj?.endedReason === 'customer-ended-call' || callObj?.endedReason === 'assistant-ended-call' ? 'SUCCESS' : 'FAIL');
+
+            // Format Duration to M:SS
+            const durationSeconds = Math.floor(callObj?.duration || 0);
+            const minutes = Math.floor(durationSeconds / 60);
+            const seconds = durationSeconds % 60;
+            const formattedDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
             // --- OUTCOME DETECTION LOGIC ---
             // 1. Default to 'completed'
             let outcome = 'completed';
 
             // 2. Check for "Issue Reported" (if the tool was called)
-            // We can check if 'toolCalls' array in the summary or previous logs contained reportIssue
-            // Or roughly check the summary/transcript keywords if Vapi provides them here.
-            // A better way is to rely on what happened.
-            // For now, we'll check the summary text if available.
-            const summary = call?.analysis?.summary || body.summary || '';
-            const structuredOutcome = call?.analysis?.structuredData?.outcome || '';
+            const summary = callObj?.analysis?.summary || body.summary || '';
+            const structuredOutcome = callObj?.analysis?.structuredData?.outcome || '';
 
             if (summary.toLowerCase().includes('issue') || summary.toLowerCase().includes('problem')) {
                 outcome = 'issue';
             }
 
             // 3. Check for "Sale" (Payment Link Sent)
-            // We can look at the 'toolCalls' in the message history or if we logged it previously.
-            // Vapi's end-of-call-report usually includes a list of tool calls made during the call.
-            // We will check call.toolCalls if available.
-            const toolsUsed = call?.toolCalls || [];
+            const toolsUsed = callObj?.toolCalls || [];
             const linkSent = toolsUsed.some((t: any) => t.function?.name === 'sendSms'); // sendSms implies link sent in our current flow
 
             if (linkSent) {
@@ -157,12 +170,12 @@ serve(async (req) => {
 
             // --- LOG TO DB ---
             await sb.from('call_logs').update({
-                duration: Math.floor(call?.duration || 0) + "s",
+                duration: formattedDuration, // Formatted as M:SS
                 connection_status: status,
-                transcript: transcript || '',
+                transcript: transcript || '', // transcript might be top-level or in callObj. leaving as is if destructured.
                 outcome: outcome,
                 summary: summary
-            }).eq('provider_call_id', call?.id);
+            }).eq('provider_call_id', callObj?.id);
 
             // --- LOG "SALE" TO MONDAY.COM ---
             if (outcome === 'sale') {
@@ -172,22 +185,72 @@ serve(async (req) => {
                     const boardId = Deno.env.get('MONDAY_BOARD_ID');
 
                     if (mondayApiKey && boardId) {
-                        const customer = call?.customer;
-                        const productName = call?.metadata?.productName || "Warranty Item"; // Pass this in metadata if possible
+                        const customer = callObj?.customer;
+                        const productName = callObj?.metadata?.productName || "Warranty Item";
                         const itemName = `Sale: ${productName} - ${customer?.name || customer?.number}`;
+
+                        // 1. Fetch Board Columns to find correct IDs
+                        const queryColumns = `
+                          query {
+                            boards (ids: [${boardId}]) {
+                              columns {
+                                id
+                                title
+                                type
+                              }
+                            }
+                          }
+                        `;
+                        const colRes = await fetch('https://api.monday.com/v2', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': mondayApiKey,
+                                'Content-Type': 'application/json',
+                                'API-Version': '2023-10'
+                            },
+                            body: JSON.stringify({ query: queryColumns })
+                        });
+                        const colData = await colRes.json();
+                        const columns = colData.data?.boards?.[0]?.columns || [];
+
+                        // Find IDs
+                        const phoneCol = columns.find((c: any) => c.title.toLowerCase() === 'phone');
+                        const firstNameCol = columns.find((c: any) => c.title.toLowerCase() === 'first name' || c.title.toLowerCase() === 'firstname');
+                        const lastNameCol = columns.find((c: any) => c.title.toLowerCase() === 'last name' || c.title.toLowerCase() === 'lastname');
+                        const dateCol = columns.find((c: any) => c.title.toLowerCase() === 'date' || c.title.toLowerCase() === 'date created');
+
+                        const columnValues: any = {
+                            status: { label: "Done" }
+                        };
+
+                        // Split Name
+                        let firstName = '';
+                        let lastName = '';
+                        const fullName = customer?.name || '';
+                        if (fullName) {
+                            const parts = fullName.split(' ');
+                            firstName = parts[0];
+                            lastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
+                        }
+
+                        if (firstNameCol) columnValues[firstNameCol.id] = firstName;
+                        if (lastNameCol) columnValues[lastNameCol.id] = lastName;
+                        if (dateCol) columnValues[dateCol.id] = new Date().toISOString().split('T')[0];
+                        if (phoneCol && customer?.number) {
+                            columnValues[phoneCol.id] = customer.number.replace(/\D/g, '');
+                        }
 
                         const createMutation = `
                           mutation {
                             create_item (
                               board_id: ${boardId},
                               item_name: "${itemName}",
-                              column_values: "{\\"status\\": {\\"label\\": \\"Done\\"}}" 
+                              column_values: ${JSON.stringify(JSON.stringify(columnValues))} 
                             ) {
                               id
                             }
                           }
                         `;
-                        // Note: Status label "Done" or "Working on it" depends on Board config. Using simple creation for now.
 
                         await fetch('https://api.monday.com/v2', {
                             method: 'POST',

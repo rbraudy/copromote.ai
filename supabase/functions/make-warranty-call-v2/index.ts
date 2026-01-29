@@ -64,6 +64,11 @@ Your customer's phone number is ${tel}.
 - Builds value using relevant examples only
 - Closes using choice, not pressure, while emphasizing the time constraints and price discounts of the offer.
 
+**GUARDRAILS & SAFETY:**
+- **Off-Limits Topics**: You do NOT discuss politics, religion, or social issues. If the customer brings these up, politely say: "I don't have an opinion on that, but I'd love to make sure your gear is protected." and pivot back to the warranty.
+- **Profanity**: If the customer uses profanity, politely say: "I'd appreciate if we could keep this professional. I'm just here to help you." If they continue, say "I'm going to let you go now. Have a nice day." and end the call.
+- **Persistent Distraction**: If the customer repeatedly asks irrelevant questions (more than twice) that are not about photography, the product, or the warranty, say: "It seems like this isn't a good time. I'll let you go. Thanks!" and end the call.
+
 **GLOBAL RULES (VERY IMPORTANT):**
 - Normalize every answer
 - Stop pitching if the customer opts out clearly
@@ -95,11 +100,9 @@ Your customer's phone number is ${tel}.
 **SCRIPT FLOW:**
 
 1. **The Introduction & Gatekeeper (Service First):**
-   - **Start speaking immediately after the customer answers**: "Hi! ... Is ${firstName} there?"
-   - **immediately after customer responds**:
-   - "Hi ${firstName}! My name is ${agentName}...I'm a Henry's camera store concierge...Do you have a quick minute?"
-   - **immediately after customer responds**:
-   - "Great. **I am following up on your recent order of the ${prod} to make sure it's arrived safely?**"
+   - **Start speaking immediately after the customer answers**: "Hi!, Is ${firstName} there?"
+   - **immediately after customer responds**: "Hi ${firstName}! My name is ${agentName}...I'm a Henry's camera store concierge...I'm following up on your recent order. Do you have a quick minute?"
+   - **immediately after customer responds**: "Great, first I wanted to make sure your arrived safely."
 
    **PATH A: ISSUE DETECTED (STOP SELLING IMMEDIATELY)**
    - **Trigger 1 (Vague Negative)**: IF customer says "No", "Not really", or sounds unhappy WITHOUT stating the reason.
@@ -107,24 +110,26 @@ Your customer's phone number is ${tel}.
      - **Wait for response**: Then proceed to Trigger 2.
 
    - **Trigger 2 (Specific Issue)**: IF customer says "Not received", "Damaged", "Wrong item", "Waiting for delivery" or explains the issue.
-     - **Response**: "Oh no, I am so sorry to hear that! That is definitely frustrating. I'm going to reach out to the right person on our team immediately to resolve this issue for you. Let me get a ticket created..."
+     - **Response**: "Oh no, I am so sorry to hear that! I'm going to reach out to the right person on our team immediately to resolve this issue for you. Let me get a ticket created..."
       - **Action 1**: Call 'reportIssue' tool with the correct issueType (not_received, damaged, wrong_item, waiting_for_delivery, returned) and description.
       - **Action 2 (After Tool Output)**:
-      - "Okay, I've filed that report. Your Incident Number is [Monday Item ID]. I've also sent you a text with that number and a confirmation that we're on it. Expect an email from us shortly."
+      - "Okay, I've opened a ticket for that report and sent you a text with your incident number and a confirmation that we're on it. You can expect an email from us shortly."
       - **CRITICAL**: The system sends the text automatically. **DO NOT** call the 'sendSms' tool for this.
-      - **Action 3 (Wait for Acknowledgement)**:
-      - **Wait for the customer to say** "Okay", "Thanks", or ask a question.
-      - **Only then say**: "Thanks for your patience, we'll get this fixed. Bye!" -> **End Call**.
+      - **Action 3 (Wait for Acknowledgement)**: Wait for the customer to say "Okay", "Thanks", or ask a question.
+      - **If they ask a question**: Answer from Knowledge Base & FAQs.
+      - **If they have no more questions**: Only then say: "Thanks for your patience, we'll get this sorted out."
+      - **Action 4 (Wait for Acknowledgement)**: Wait for the customer to say "Okay", "Thanks" or "Bye!".
+      - say "Bye!" and **End Call**.
 
    **PATH B: CUSTOMER HAPPY (PROCEED TO SALE)**
    - **Trigger**: IF customer says "Yes", "Got it", "It's great".
    - "That is great to hear! I'm glad you're enjoying it."
-   - **Transition**: "The reason I wanted to reach out is that **since you're happy with the gear**, we’ve gifted you 7 days of our Extended Protection at no charge... and it's already active on your account..."
-   - "I'll send you a text with the full details, but do you have 30 seconds for me to highlight some of the biggest things it covers?"
-   - **Wait for response**: "Great, I just want to confirm that this is the best number to send the details to?"
+   - **Transition**: "The reason I wanted to reach out is that since you're happy with the gear, we’ve gifted you 7 days of our Extended Protection at no charge, and it's already active on your account."
+   - "I'm going to send you a text with the full details, but do you have 30 seconds for me to highlight some of the biggest things it covers?"
+   - **Wait for response**: "Great. Just to double check, is this the best number to text those details to?"
    - **Once confirmed**: Execute 'sendSms' tool immediately and continue to pitch.
    - **If Questioning**: "My name is ${agentName}...I'm a concierge for Henry's...I wanted to let you know about the Extended Protection plan we’ve gifted you. Do you have a quick minute?"
-   - **If No/Busy**: Confirm number, send SMS, and end politely.
+   - **If No/Busy**: Confirm number, send SMS, and say "ok, I sent you the details. Feel free to reach out anytime if you have questions. Have a great day!" and **End Call**.
 
 
 2. **The Pitch (Only if Path B):**
@@ -283,22 +288,24 @@ Your customer's phone number is ${tel}.
                 voice: {
                     provider: "11labs",
                     voiceId: "jBzLvP03992lMFEkj2kJ",
-                    stability: 0.10,
-                    similarityBoost: 0.5,
-                    style: 0.70
+                    model: "eleven_turbo_v2_5",
+                    stability: 0.50,
+                    similarityBoost: 0.75,
+                    style: 0.0
                 },
                 transcriber: {
                     provider: "deepgram",
                     model: "nova-2",
                     language: "en",
-                    endpointing: 400 // Balanced silence detection (400ms)
+                    endpointing: 200 // Faster response (was 300ms)
                 },
                 // silenceTimeoutSeconds: 0.4, // REMOVED: Vapi requires min 10s. Default is fine.
                 stopSpeakingPlan: {
                     numWords: 2,
                     voiceSeconds: 0.5
                 },
-                serverUrl: Deno.env.get('SUPABASE_URL') + '/functions/v1/handle-call-webhook-v2',
+                // Hardcoding URL to rule out Env Var issues
+                serverUrl: 'https://tikocqefwifjcfhgqdyj.supabase.co/functions/v1/handle-call-webhook-v2',
                 firstMessageMode: "assistant-waits-for-user",
                 firstMessage: `Hi! ... Is ${firstName} there?`,
                 backgroundSound: "off"
@@ -309,7 +316,8 @@ Your customer's phone number is ${tel}.
         console.log('Vapi Payload:', JSON.stringify({
             phoneNumberId: payload.phoneNumberId,
             customer: payload.customer,
-            metadata: payload.metadata
+            metadata: payload.metadata,
+            serverUrl: payload.assistant.serverUrl
         }));
 
         console.log('Sending to Vapi. URL: https://api.vapi.ai/call/phone');
@@ -347,24 +355,44 @@ Your customer's phone number is ${tel}.
         const vapiData = await vapiRes.json();
         console.log('Vapi Success Data:', JSON.stringify(vapiData));
 
-        (async () => {
-            try {
-                if (pid) await sb.rpc('increment_call_attempts', { prospect_id: pid });
-                await sb.from('call_logs').insert({
-                    warranty_prospect_id: pid,
-                    provider_call_id: vapiData.id,
-                    connection_status: 'FAIL',
-                    communication_sent: 'Initiated AI call'
-                });
-            } catch (dbErr) {
-                console.error('Background DB Error:', dbErr);
-            }
-        })();
+        let processingError = null;
 
-        return new Response(JSON.stringify({ success: true, id: vapiData.id }), {
+        // Separated Try/Catch Blocks for Safety
+        if (pid) {
+            try {
+                await sb.rpc('increment_call_attempts', { prospect_id: pid });
+            } catch (rpcErr) {
+                console.error('RPC Error (ignoring):', rpcErr);
+            }
+        }
+
+        try {
+            const { error: insertError } = await sb.from('call_logs').insert({
+                warranty_prospect_id: pid,
+                provider_call_id: vapiData.id,
+                connection_status: 'FAIL',
+                communication_sent: 'Initiated AI call'
+            });
+            if (insertError) {
+                console.error('Insert Error:', insertError);
+                processingError = `DB Insert Error: ${insertError.message}`;
+            } else {
+                console.log('Successfully inserted call_log for ID:', vapiData.id);
+            }
+        } catch (dbErr) {
+            console.error('DB Log Error:', dbErr);
+            processingError = `DB Exception: ${dbErr.message}`;
+        }
+
+        return new Response(JSON.stringify({
+            success: true,
+            id: vapiData.id,
+            warning: processingError
+        }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200
         });
+
 
     } catch (e) {
         console.error('Edge Function Catch:', e.message);
