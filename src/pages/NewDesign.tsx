@@ -223,9 +223,9 @@ const NewDesign = () => {
                                             </div>
                                         </div>
 
-                                        <div className="border-2 border-dashed border-white/10 rounded-3xl p-10 flex flex-col items-center justify-center group/drop hover:border-blue-500/50 transition-colors">
-                                            <Upload className="w-10 h-10 text-slate-600 group-hover/drop:text-blue-400 transition-colors mb-4" />
-                                            <p className="text-sm text-slate-400">Drop lead list here</p>
+                                        <div className="border-2 border-dashed border-white/10 rounded-3xl p-10 flex flex-col items-center justify-center opacity-50 cursor-not-allowed">
+                                            <Upload className="w-10 h-10 text-slate-600 mb-4" />
+                                            <p className="text-sm text-slate-500">Batch Upload Interface (Admin Only)</p>
                                         </div>
 
                                         <div className="space-y-3">
