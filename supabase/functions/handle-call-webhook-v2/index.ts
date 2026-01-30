@@ -173,105 +173,27 @@ serve(async (req) => {
                 duration: formattedDuration, // Formatted as M:SS
                 connection_status: status,
                 transcript: transcript || '', // transcript might be top-level or in callObj. leaving as is if destructured.
-                outcome: outcome,
-                summary: summary
+                outcome: outcome
             }).eq('provider_call_id', callObj?.id);
 
-            // --- LOG "SALE" TO MONDAY.COM ---
+            // --- SALES LOGGING DISABLED ---
+            // User requested to pause automated sales ticketing until flow is defined.
             if (outcome === 'sale') {
-                console.log('Outcome is SALE - logging to Monday.com...');
-                try {
-                    const mondayApiKey = Deno.env.get('MONDAY_API_KEY');
-                    const boardId = Deno.env.get('MONDAY_BOARD_ID');
-
-                    if (mondayApiKey && boardId) {
-                        const customer = callObj?.customer;
-                        const productName = callObj?.metadata?.productName || "Warranty Item";
-                        const itemName = `Sale: ${productName} - ${customer?.name || customer?.number}`;
-
-                        // 1. Fetch Board Columns to find correct IDs
-                        const queryColumns = `
-                          query {
-                            boards (ids: [${boardId}]) {
-                              columns {
-                                id
-                                title
-                                type
-                              }
-                            }
-                          }
-                        `;
-                        const colRes = await fetch('https://api.monday.com/v2', {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': mondayApiKey,
-                                'Content-Type': 'application/json',
-                                'API-Version': '2023-10'
-                            },
-                            body: JSON.stringify({ query: queryColumns })
-                        });
-                        const colData = await colRes.json();
-                        const columns = colData.data?.boards?.[0]?.columns || [];
-
-                        // Find IDs
-                        const phoneCol = columns.find((c: any) => c.title.toLowerCase() === 'phone');
-                        const firstNameCol = columns.find((c: any) => c.title.toLowerCase() === 'first name' || c.title.toLowerCase() === 'firstname');
-                        const lastNameCol = columns.find((c: any) => c.title.toLowerCase() === 'last name' || c.title.toLowerCase() === 'lastname');
-                        const dateCol = columns.find((c: any) => c.title.toLowerCase() === 'date' || c.title.toLowerCase() === 'date created');
-
-                        const columnValues: any = {
-                            status: { label: "Done" }
-                        };
-
-                        // Split Name
-                        let firstName = '';
-                        let lastName = '';
-                        const fullName = customer?.name || '';
-                        if (fullName) {
-                            const parts = fullName.split(' ');
-                            firstName = parts[0];
-                            lastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
-                        }
-
-                        if (firstNameCol) columnValues[firstNameCol.id] = firstName;
-                        if (lastNameCol) columnValues[lastNameCol.id] = lastName;
-                        if (dateCol) columnValues[dateCol.id] = new Date().toISOString().split('T')[0];
-                        if (phoneCol && customer?.number) {
-                            columnValues[phoneCol.id] = customer.number.replace(/\D/g, '');
-                        }
-
-                        const createMutation = `
-                          mutation {
-                            create_item (
-                              board_id: ${boardId},
-                              item_name: "${itemName}",
-                              column_values: ${JSON.stringify(JSON.stringify(columnValues))} 
-                            ) {
-                              id
-                            }
-                          }
-                        `;
-
-                        await fetch('https://api.monday.com/v2', {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': mondayApiKey,
-                                'Content-Type': 'application/json',
-                                'API-Version': '2023-10'
-                            },
-                            body: JSON.stringify({ query: createMutation })
-                        });
-                        console.log('Monday.com Sales Item Created');
-                    }
-                } catch (mondayErr) {
-                    console.error('Failed to log sale to Monday:', mondayErr);
-                }
+                console.log('Outcome is SALE - (CRM logging disabled)');
             }
         }
 
-        return new Response(JSON.stringify({ success: true }), { status: 200 });
+        return new Response(JSON.stringify({ success: true }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200
+        });
+
     } catch (e) {
         console.error('Webhook Error:', e.message);
-        return new Response(JSON.stringify({ error: e.message }), { status: 200 });
+        return new Response(JSON.stringify({ error: e.message }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200
+        });
     }
 })
+
