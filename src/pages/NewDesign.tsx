@@ -128,6 +128,15 @@ const NewDesign = () => {
                                 Our agents can be fully integrated into your core systems to provide comprehensive, accurate, and timely resolutions to all incoming needs. By accessing your real-time data, the AI provides human-grade support with full context of every customer's history and status.
                             </p>
                         </div>
+                        <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
+                            <div className="w-12 h-12 bg-yellow-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <Zap className="text-yellow-500 w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-4">Infinite, Instant Scale</h3>
+                            <p className="text-slate-400 text-sm leading-relaxed">
+                                Launch thousands of calls in minutes. No hiring, no training, no sick days. Just on-demand sales capacity that scales up or down instantly to match your inventory.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </section>
