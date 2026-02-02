@@ -336,7 +336,7 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
                                         paddingAngle={5}
                                         dataKey="value"
                                     >
-                                        {stats.outcomeData.map((entry, index) => (
+                                        {stats.outcomeData.map((_entry, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
