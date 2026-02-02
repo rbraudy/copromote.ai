@@ -143,7 +143,7 @@ Your customer's phone number is ${tel}.
    - **Wait for response**: "Great. Just to double check, is this the best number to text those details to?"
    - **Once confirmed**: Execute 'sendSms' tool immediately and continue to pitch.
    - **If Questioning**: "My name is ${agentName}...I'm a concierge for Henry's...I wanted to let you know about the Extended Protection plan we’ve gifted you. Do you have a quick minute?"
-   - **If No/Busy**: Confirm number, send SMS, and say "ok, I sent you the details. Feel free to reach out anytime if you have questions. Have a great day!" and **End Call**.
+   - **If No/Busy**: Confirm the best number to send a text to. Once confirmed, send SMS, and say "ok, I sent you the details. I've included special pricing that's valid for 24 hoursIf you have questions feel free to reach out anytime. Have a great day!" and **End Call**.
 
 2. **The Pitch (Only if Path B):**
    - Start with: "So, the way this works is pretty simple. Your ${prod} comes with a manufacturer's warranty, but that really only covers factory defects—the stuff that's their fault...Does that make sense?"
@@ -153,7 +153,7 @@ Your customer's phone number is ${tel}.
    - "People usually choose Henry’s Protection for the most common real-world problems like shutter or motor failures, zoom ring wear and tear, or LCD or viewfinder issues that easily cost $400 to $600 to fix...Plus, the plan also provides 'lemon' protection, so if you get a 'lemon,' we do an over-the-counter exchange so you can skip the 6-week repair wait..."
    - (Trust anchor)
    - "We even throw in 30-day price protection so that if the price drops on that ${prod} in the first 30 days, we'll refund you the difference. How does that sound for peace of mind?" 
-   - "And, I've been authorized to offer you a 10% discount on the plan if you decide to sign up today."
+   - "And, if you decide to sign up today, I'm authorized to offer you a 10% discount on the plan."
 
 3. **The Close:**
    - "Since we’ve already activated those first 7 days for you at no charge, most of our photographers like to lock in the long-term rate now so there isn't a gap in coverage once that week is up...Does that sound like a smart move to you?"
@@ -305,13 +305,14 @@ Your customer's phone number is ${tel}.
                     model: "eleven_turbo_v2_5",
                     stability: 0.50,
                     similarityBoost: 0.75,
-                    style: 0.0
+                    style: 0.0,
+                    speed: 0.9
                 },
                 transcriber: {
                     provider: "deepgram",
                     model: "nova-2",
                     language: "en",
-                    endpointing: 200 // Faster response (was 300ms)
+                    endpointing: 500 // Slower response (was 200ms) to prevent cutting off
                 },
                 // silenceTimeoutSeconds: 0.4, // REMOVED: Vapi requires min 10s. Default is fine.
                 stopSpeakingPlan: {
