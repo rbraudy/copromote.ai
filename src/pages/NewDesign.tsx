@@ -107,7 +107,7 @@ const NewDesign = () => {
                             </div>
                             <h3 className="text-xl font-bold mb-4">Elite Sales Performance</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                Our agents employ leading sales methodologies to consultatively identify needs, handle objections, and <strong className="text-slate-200">close deals</strong>.
+                                Our agents make us of the leading sales approaches to identify client needs, handle objections, and <strong className="text-slate-200">close deals</strong> better than your best sales rep.
                             </p>
                         </div>
                         <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
@@ -116,16 +116,16 @@ const NewDesign = () => {
                             </div>
                             <h3 className="text-xl font-bold mb-4">Adaptive Sales Intelligence</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                Every interaction is a learning event. Our system instantly analyzes product purchase history to tailor pitches to the exact items a customer owns, while simultaneously processing real-time conversation data to automatically optimize scripts and shift strategies for maximum revenue.
+                                Our agents tailor their sales pitches in real time based on specific customer interactions and learnings from previous conversations to optimize revenue.
                             </p>
                         </div>
                         <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
                             <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                 <Users className="text-indigo-500 w-6 h-6" />
                             </div>
-                            <h3 className="text-xl font-bold mb-4">Out Of The Box Integrated Support Concierge</h3>
+                            <h3 className="text-xl font-bold mb-4">Integrated Real-Time Support Concierge</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                Our agents can be fully integrated into your core systems to provide comprehensive, accurate, and timely resolutions to all incoming needs. By accessing your real-time data, the AI provides human-grade support with full context of every customer's history and status.
+                                Warranty sales calls often become your front line for customer support. Our AI concierge integrates directly with your ERP, CRM, and shipping data to resolve issues in real time—turning a sales call into a seamless service experience.
                             </p>
                         </div>
                         <div className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all group">
@@ -134,7 +134,7 @@ const NewDesign = () => {
                             </div>
                             <h3 className="text-xl font-bold mb-4">Infinite, Instant Scale</h3>
                             <p className="text-slate-400 text-sm leading-relaxed">
-                                Launch thousands of calls in minutes. No hiring, no training, no sick days. Just on-demand sales capacity that scales up or down instantly to match your inventory.
+                                Launch thousands of calls in minutes. No hiring, no training, no sick days. Just on-demand sales capacity that scales up or down instantly to match your needs.
                             </p>
                         </div>
                     </div>
