@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, PhoneCall, Loader2, FileText, AlertCircle, PlayCircle, Upload, LayoutDashboard, BarChart3, TrendingUp, Users, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { Clock, PhoneCall, Loader2, FileText, AlertCircle, PlayCircle, Upload, LayoutDashboard, BarChart3, TrendingUp, CheckCircle, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { User } from 'firebase/auth';
 import { CallTranscriptModal } from './CallTranscriptModal';
 import { DemoCallModal } from './DemoCallModal';
 import { ImportProspectsModal } from './ImportProspectsModal';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const getStatusColor = (status: string) => {
     switch (status) {

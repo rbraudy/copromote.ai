@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { X, Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import Papa from 'papaparse';
 import { supabase } from '../../lib/supabase';
@@ -26,7 +26,6 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
     const [isDragging, setIsDragging] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
-    const [isParsing, setIsParsing] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStats, setUploadStats] = useState<{ success: number; failed: number } | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -62,7 +61,6 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
 
     const handleFile = (file: File) => {
         setFile(file);
-        setIsParsing(true);
         setError(null);
         setUploadStats(null);
 
@@ -71,11 +69,9 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
             skipEmptyLines: true,
             complete: (results) => {
                 setParsedData(results.data as ParsedRow[]);
-                setIsParsing(false);
             },
             error: (err) => {
                 setError(`Failed to parse CSV: ${err.message}`);
-                setIsParsing(false);
             }
         });
     };
