@@ -35,16 +35,16 @@ serve(async (req) => {
                     console.log('Sending SMS. Payload:', JSON.stringify(args));
                     const { phoneNumber, message: smsMessage } = args;
 
-                    const sid = Deno.env.get('TWILIO_ACCOUNT_SID');
-                    const token = Deno.env.get('TWILIO_AUTH_TOKEN');
-                    let from = Deno.env.get('TWILIO_PHONE_NUMBER');
+                    const sid = (Deno.env.get('TWILIO_ACCOUNT_SID') || '').trim();
+                    const token = (Deno.env.get('TWILIO_AUTH_TOKEN') || '').trim();
+                    let from = (Deno.env.get('TWILIO_PHONE_NUMBER') || '').trim();
 
                     // Canadian Routing
                     if (phoneNumber && phoneNumber.startsWith('+1')) {
                         const area = phoneNumber.substring(2, 5);
                         if (caCodes.includes(area)) {
                             const caNumber = Deno.env.get('TWILIO_PHONE_NUMBER_CA');
-                            if (caNumber) from = caNumber;
+                            if (caNumber) from = caNumber.trim();
                         }
                     }
 
@@ -81,6 +81,16 @@ serve(async (req) => {
                             const errTxt = await twRes.text();
                             console.error(`Twilio Error for ${phoneNumber}: ${errTxt}`);
                             results.push({ toolCallId: tc.id, error: "Twilio Error: " + errTxt });
+
+                            // Log Failure to DB
+                            try {
+                                const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+                                await sb.from('call_logs').update({
+                                    communication_sent: `SMS FAILED: ${errTxt.substring(0, 50)}`
+                                }).eq('provider_call_id', call?.id || message?.call?.id || body.call?.id);
+                            } catch (dbErr) {
+                                console.error('Database logging error:', dbErr);
+                            }
                         }
                     } else {
                         results.push({ toolCallId: tc.id, error: "Missing Twilio credentials or sender number" });

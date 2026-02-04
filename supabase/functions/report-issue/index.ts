@@ -128,12 +128,7 @@ serve(async (req) => {
     console.error('Error:', error.message);
     return new Response(
       JSON.stringify({
-        error: error.message,
-        debug: {
-          emailUsed: email,
-          tokenPrefix: token.substring(0, 4),
-          authStringLength: `Basic ${btoa(`${email}/token:${token}`)}`.length
-        }
+        error: error.message
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     )
