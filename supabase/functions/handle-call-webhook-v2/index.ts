@@ -131,7 +131,47 @@ serve(async (req) => {
                         results.push({ toolCallId: tc.id, error: "Internal Error reporting issue" });
                     }
                 }
-            }
+                else if (tc.function?.name === 'offerDiscount') {
+                    console.log('Processing offerDiscount tool call');
+                    const args = typeof tc.function.arguments === 'string'
+                        ? JSON.parse(tc.function.arguments)
+                        : tc.function.arguments;
+
+                    const newPrice = args.newPrice;
+                    const sessionId = body.call?.metadata?.prospectId || body.message?.metadata?.prospectId;
+
+                    console.log(`Applying discount: $${newPrice} to Session: ${sessionId}`);
+
+                    if (sessionId && newPrice) {
+                        try {
+                            const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+                            // Upsert session to support CSV/Demo flows
+                            const { error: updateError } = await sb
+                                .from('warranty_sessions')
+                                .upsert({
+                                    id: sessionId,
+                                    customer_name: (body.call?.customer?.name || "Valued Customer"),
+                                    current_price: newPrice,
+                                    status: 'discounted'
+                                }, { onConflict: 'id' });
+
+                            if (updateError) {
+                                console.error('Error updating session:', updateError);
+                                results.push({ toolCallId: tc.id, error: "Failed to apply discount in DB" });
+                            } else {
+                                console.log('Discount applied successfully.');
+                                results.push({ toolCallId: tc.id, result: "Discount applied! The customer's screen has been updated." });
+                            }
+                        } catch (err) {
+                            console.error('Internal error applying discount:', err);
+                            results.push({ toolCallId: tc.id, error: "Internal Error applying discount" });
+                        }
+                    } else {
+                        results.push({ toolCallId: tc.id, error: "Missing sessionId (prospectId) or newPrice" });
+                    }
+                }
+            } // End of loop
             return new Response(JSON.stringify({ results }), { status: 200, headers: { 'Content-Type': 'application/json' } });
         }
 

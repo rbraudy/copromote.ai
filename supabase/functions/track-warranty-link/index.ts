@@ -46,7 +46,27 @@ Deno.serve(async (req) => {
             if (error) console.error('Error incrementing link clicks:', error);
         }
 
-        return Response.redirect(redirectUrl, 302);
+        // 4. Construct Destination URL with Magic Session
+        // Default to /pricing if not specified, or respect the 'redirect' param but add session
+        let finalUrl = redirectUrl;
+
+        // Improve Redirect Logic for Demo:
+        // If redirectUrl is just the base domain, point to /pricing
+        if (redirectUrl === 'https://copromote.ai/henrys' || redirectUrl === 'http://localhost:5173/henrys') {
+            finalUrl = redirectUrl + '/pricing';
+        }
+
+        // Check if separating char is ? or &
+        const separator = finalUrl.includes('?') ? '&' : '?';
+
+        // Append Session ID (using prospectId as the session key)
+        if (prospectId) {
+            finalUrl = `${finalUrl}${separator}session=${prospectId}`;
+        }
+
+        console.log(`Redirecting to: ${finalUrl}`);
+
+        return Response.redirect(finalUrl, 302);
 
     } catch (error: any) {
         console.error('Error tracking link click:', error);

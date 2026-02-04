@@ -145,6 +145,13 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
                 // Clean phone: Keep only digits and optional leading +
                 const cleanPhone = phone.toString().replace(/[^\d+]/g, '');
 
+                // Parse Warranty Prices (from CSV)
+                const price2yrRaw = getValue(row, '2 Yrs. HELP Price', '2 Year HELP Price', '2 Year', '2yr Price');
+                const price3yrRaw = getValue(row, '3 Yrs. HELP Price', '3 Year HELP Price', '3 Year', '3yr Price');
+
+                const price2yr = price2yrRaw ? parseInt(price2yrRaw.replace(/[^\d]/g, ''), 10) : 199;
+                const price3yr = price3yrRaw ? parseInt(price3yrRaw.replace(/[^\d]/g, ''), 10) : 299;
+
                 const { error: insertError } = await supabase
                     .from('warranty_prospects')
                     .insert({
@@ -155,8 +162,10 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
                         product_name: product,
                         email: email,
                         purchase_date: purchaseDate.toISOString(),
-                        expiry_date: expiryDate.toISOString(), // Explicitly providing Expiry Date
-                        status: 'new'
+                        expiry_date: expiryDate.toISOString(),
+                        status: 'new',
+                        warranty_price_2yr: price2yr,
+                        warranty_price_3yr: price3yr
                     });
 
                 if (insertError) {

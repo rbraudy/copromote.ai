@@ -19,13 +19,48 @@ export const DemoCallModal: React.FC<DemoCallModalProps> = ({ isOpen, onClose })
         e.preventDefault();
         setIsCalling(true);
         try {
+            // 1. Attempt to find existing prospect by phone
+            // Clean phone for lookup (remove non-digits)
+            const cleanPhone = phone.replace(/[^\d]/g, '');
+            // Try enabling fuzzy search by matching last 10 digits if possible, 
+            // but for now, exact match on the stored 'phone' column (which is digits only) is best.
+
+            console.log("Looking up prospect with phone:", cleanPhone);
+
+            const { data: prospect, error: lookupError } = await supabase
+                .from('warranty_prospects')
+                .select('*')
+                .ilike('phone', `%${cleanPhone}%`) // Simple partial match to be safe
+                .limit(1)
+                .single();
+
+            if (lookupError && lookupError.code !== 'PGRST116') {
+                console.warn('Error looking up prospect:', lookupError);
+            }
+
+            let callBody = {
+                phone,
+                customerName: customerName || 'Valued Customer',
+                productName: 'Sony A7 IV Camera',
+                purchaseDate: new Date().toISOString()
+            };
+
+            if (prospect) {
+                console.log("Found existing prospect:", prospect);
+                callBody = {
+                    ...callBody,
+                    // Use DB data if available, otherwise fall back to input
+                    customerName: prospect.customer_name || customerName,
+                    productName: prospect.product_name || callBody.productName,
+                    // @ts-ignore
+                    prospectId: prospect.id
+                };
+            } else {
+                console.log("No prospect found, using demo defaults.");
+            }
+
             const { data, error } = await supabase.functions.invoke('make-warranty-call-v2', {
-                body: {
-                    phone,
-                    customerName: customerName || 'Valued Customer',
-                    productName: 'Sony A7 IV Camera', // Example product
-                    purchaseDate: new Date().toISOString()
-                }
+                body: callBody
             });
 
             if (error) {
