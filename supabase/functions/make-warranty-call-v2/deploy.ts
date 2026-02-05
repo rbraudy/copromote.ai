@@ -31,7 +31,7 @@ serve(async (req) => {
         // ULTRA-VERBOSE E.164 NORMALIZATION
         console.log(`Original phone input: "${phoneInput}" (length: ${phoneInput.length})`);
 
-        let tel = phoneInput.replace(/[^\d+]/g, ''); // Keep only digits and +
+        let tel = phoneInput.replace(/[^\d+]/g, '');
 
         if (tel.startsWith('+')) {
             tel = '+' + tel.substring(1).replace(/\+/g, '');
@@ -56,14 +56,14 @@ serve(async (req) => {
         const link = (pid) ? (Deno.env.get('SUPABASE_URL') + '/functions/v1/track-warranty-link?prospectId=' + pid) : 'https://www.henrys.com';
 
         // Fetch Prospect Data for Dynamic Pricing
-        let purchaseAmount = 1990; // Default base ($1990)
-        let price2yr = 199; // Default 2-Year Price ($199)
-        let price3yr = 299; // Default 3-Year Price ($299)
+        let purchaseAmount = 1990;
+        let price2yr = 199;
+        let price3yr = 299;
 
         if (pid) {
             console.log(`Fetching data for Prospect ID: ${pid}`);
             const { data: prospect, error: fetchError } = await sb.from('warranty_prospects')
-                .select('*') // Select all to be safe and debug
+                .select('*')
                 .eq('id', pid)
                 .single();
 
@@ -73,8 +73,6 @@ serve(async (req) => {
 
             if (prospect) {
                 console.log('Prospect Data Retrieved:', JSON.stringify(prospect));
-                // Use coalescing to ensure we don't skip valid 0 values if applicable (price shouldn't be 0 but good practice)
-                // Database stores cents, convert to dollars for the Prompt
                 if (prospect.purchase_amount !== undefined && prospect.purchase_amount !== null) purchaseAmount = Math.round(prospect.purchase_amount / 100);
                 if (prospect.warranty_price_2yr !== undefined && prospect.warranty_price_2yr !== null) price2yr = Math.round(prospect.warranty_price_2yr / 100);
                 if (prospect.warranty_price_3yr !== undefined && prospect.warranty_price_3yr !== null) price3yr = Math.round(prospect.warranty_price_3yr / 100);
@@ -86,15 +84,10 @@ serve(async (req) => {
             console.log('No Prospect ID (pid) provided in request body. Using default demo pricing.');
         }
 
-        // Pricing Logic
-        // Standard Warranty Rule: Use the CSV provided value
         const warrantyPrice = price2yr;
-
-        // One-Shot Offer Rule: 10% OFF the Standard Warranty Price
         const oneShotPrice = Math.round(warrantyPrice * 0.90);
         console.log(`Calculating Discount: ${warrantyPrice} * 0.9 = ${oneShotPrice}`);
 
-        // Monthly Rule: derived ~ $12 per $200 plan
         const monthlyPrice = Math.round(warrantyPrice / 16.5);
 
         const firstMessagePrompt = `Hi! Is ${firstName} there?`;
@@ -300,7 +293,7 @@ Your customer's phone number is ${tel}.
         - ** The "I Need to Think About It" Objection **:
 - - The Logic: Indecision / Procrastination.
 - - The Tactical Pivot: The "7-Day Gap" Warning.
-- "Of course, ${firstName}, it’s worth a thought. My only concern is that your free 7-day window is actually the only time we can bridge you into this plan without a formal inspection of the gear. If we wait, and then a month from now an issue pops up, it’s too late to get covered. Why don't we do the Monthly plan for now so you get 5 weeks of coverage? It's just $12 and you can cancel it anytime if you decide you don't need it. Shall we set that up?"
+- "Of course, ${firstName}, it’s worth a thought. My only concern is that your free 7-day window is actually the only time we can bridge you into this plan without a formal inspection of the gear. If we wait, and then a month from now an issue pops up, it’s too late to get covered. Why don't we do the Monthly plan for now so you get 5 weeks of coverage? It's just $12 and you can cancel it anytime if you decide it's not for you. Shall we set that up?"
 
 8. Tools: Use 'sendSms'.The message MUST technically follow this exact format: "Hi ${firstName}! We've activated 7 days of the Henry's Extended Warranty Protection for your ${prod} at no charge. This covers common issues like shutter motor failures, 30 day price protection, and over the counter replacements. You can view all the features of the plan here: ${link}"`;
 
@@ -316,7 +309,6 @@ Your customer's phone number is ${tel}.
             }
         }
 
-        // Debugging: Explicitly fail if keys are missing so the UI shows WHY
         if (!phoneId) {
             console.error('Configuration Error: No Vapi Phone ID found.');
             const isCa = tel.startsWith('+1') && caCodes.includes(tel.substring(2, 5));
@@ -337,7 +329,7 @@ Your customer's phone number is ${tel}.
                     provider: "openai",
                     model: "gpt-4o",
                     messages: [{ role: "system", content: realPrompt }],
-                    maxTokens: 200, // Optimize latency
+                    maxTokens: 200,
                     functions: [
                         {
                             name: "sendSms",
@@ -402,12 +394,10 @@ Your customer's phone number is ${tel}.
                     language: "en",
                     endpointing: 200
                 },
-                // silenceTimeoutSeconds: 0.4, // REMOVED: Vapi requires min 10s. Default is fine.
                 stopSpeakingPlan: {
                     numWords: 2,
                     voiceSeconds: 0.5
                 },
-                // Hardcoding URL to rule out Env Var issues
                 serverUrl: 'https://tikocqefwifjcfhgqdyj.supabase.co/functions/v1/handle-call-webhook-v2',
                 firstMessageMode: "assistant-waits-for-user",
                 firstMessage: `Hi! ... Is ${firstName} there ? `,
@@ -460,7 +450,6 @@ Your customer's phone number is ${tel}.
 
         let processingError = null;
 
-        // Separated Try/Catch Blocks for Safety
         if (pid) {
             try {
                 await sb.rpc('increment_call_attempts', { prospect_id: pid });
