@@ -51,10 +51,10 @@ Deno.serve(async (req) => {
         let finalUrl = redirectUrl;
 
         // Improve Redirect Logic for Demo:
-        // If redirectUrl is just the base domain, point to /pricing
-        if (redirectUrl === 'https://copromote.ai/henrys' || redirectUrl === 'http://localhost:5173/henrys') {
-            finalUrl = redirectUrl + '/pricing';
-        }
+        // If redirectUrl is just the base domain, point to /pricing - REMOVED PER USER REQUEST
+        // if (redirectUrl === 'https://copromote.ai/henrys' || redirectUrl === 'http://localhost:5173/henrys') {
+        //     finalUrl = redirectUrl + '/pricing';
+        // }
 
         // Check if separating char is ? or &
         const separator = finalUrl.includes('?') ? '&' : '?';

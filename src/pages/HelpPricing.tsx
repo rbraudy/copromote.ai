@@ -21,16 +21,18 @@ const HelpPricing = () => {
 
         const fetchProspectData = async () => {
             console.log("🔍 Fetching Prospect Data for:", sessionId);
+
+            // Use RPC to bypass RLS safely
             const { data, error } = await supabase
-                .from('warranty_prospects')
-                .select('warranty_price_2yr, warranty_price_3yr')
-                .eq('id', sessionId)
+                .rpc('get_prospect_pricing', { session_id: sessionId })
                 .single();
 
             if (data) {
+                const prospect = data as any;
                 console.log("✅ Found Prospect Pricing:", data);
-                if (data.warranty_price_2yr) setTwoYearPrice(data.warranty_price_2yr);
-                if (data.warranty_price_3yr) setThreeYearPrice(data.warranty_price_3yr);
+                // Database stores cents, convert to dollars
+                if (prospect.warranty_price_2yr) setTwoYearPrice(prospect.warranty_price_2yr / 100);
+                if (prospect.warranty_price_3yr) setThreeYearPrice(prospect.warranty_price_3yr / 100);
             } else if (error) {
                 console.error("❌ Error fetching prospect:", error);
             }
