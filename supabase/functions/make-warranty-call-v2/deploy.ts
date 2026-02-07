@@ -154,8 +154,8 @@ Your customer's phone number is ${tel}.
 
 ** SCRIPT FLOW:**
 
-            1. ** The Introduction & Gatekeeper(Service First):**
-   - ** Start speaking immediately after the customer answers **: "Hi!, Is ${firstName} there?"
+1. ** The Introduction & Gatekeeper(Service First):**
+   - ** PHASE 1: Your first message "Hi! ... Is ${firstName} there?" has ALREADY been spoken. Wait for the customer to confirm they are on the line. **
             - ** immediately after customer responds **: "Hi ${firstName}! My name is ${agentName}...I'm a Henry's camera store concierge...I'm following up on your recent order. Do you have a quick minute?"
                 - ** immediately after customer responds **: "Great, first I wanted to make sure your order arrived safely."
 
@@ -383,10 +383,10 @@ Your customer's phone number is ${tel}.
                     provider: "11labs",
                     voiceId: "jBzLvP03992lMFEkj2kJ",
                     model: "eleven_turbo_v2_5",
-                    stability: 0.35,
-                    similarityBoost: 0.65,
-                    style: 0.45,
-                    speed: 1.0
+                    stability: 0.5,
+                    similarityBoost: 0.75,
+                    style: 0.0,
+                    speed: 0.95
                 },
                 transcriber: {
                     provider: "deepgram",
@@ -399,7 +399,7 @@ Your customer's phone number is ${tel}.
                     voiceSeconds: 0.5
                 },
                 serverUrl: 'https://tikocqefwifjcfhgqdyj.supabase.co/functions/v1/handle-call-webhook-v2',
-                firstMessageMode: "assistant-waits-for-user",
+                firstMessageMode: "assistant-speaks-first",
                 firstMessage: `Hi! ... Is ${firstName} there ? `,
                 backgroundSound: "off"
             },
