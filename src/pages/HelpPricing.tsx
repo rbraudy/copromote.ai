@@ -206,14 +206,7 @@ const HelpPricing = () => {
                 </div>
             </section>
 
-            {/* DEBUG OVERLAY - REMOVE BEFORE PRODUCTION */}
-            <div className="fixed bottom-0 left-0 bg-black/80 text-white p-2 text-xs font-mono z-50 pointer-events-none">
-                <p>Session: {sessionId || 'None'}</p>
-                <p>Base 2yr: {basePrice2yr ?? 'Loading/Null'}</p>
-                <p>Discount: {isDiscounted ? 'Yes' : 'No'}</p>
-                <p>Hook Price: {discountedPrice ?? 'N/A'}</p>
-            </div>
-        </div >
+        </div>
     );
 };
 
