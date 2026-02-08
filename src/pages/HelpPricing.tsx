@@ -41,19 +41,6 @@ const HelpPricing = () => {
             highlight: false
         },
         {
-            name: "1 Year",
-            price: "$119",
-            period: "/one-time",
-            features: [
-                "1 Year Extension",
-                "100% Coverage",
-                "Anti-Lemon Policy",
-                "Transferable",
-                "Price Protection"
-            ],
-            highlight: false
-        },
-        {
             name: "2 Year",
             price: `$${twoYearPrice}`, // Dynamic Price
             period: "/one-time",
