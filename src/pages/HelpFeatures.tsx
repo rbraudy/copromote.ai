@@ -1,10 +1,17 @@
 import HenrysHeader from '../components/Layout/HenrysHeader';
-import { Shield, Settings, Globe, RefreshCcw, UserCheck, AlertTriangle, Percent, Calendar, DollarSign } from 'lucide-react';
+import { Shield, Settings, Globe, RefreshCcw, UserCheck, AlertTriangle, Percent, Calendar, DollarSign, Sparkles } from 'lucide-react';
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useDiscount } from '../hooks/useDiscount';
 
 const HelpFeatures = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const sessionId = searchParams.get('session');
+
+    // 🔥 Magic Pricing Hook
+    const { isDiscounted } = useDiscount(sessionId);
+
     const features = [
         {
             icon: <Shield className="w-8 h-8 text-orange-600" />,
@@ -53,19 +60,23 @@ const HelpFeatures = () => {
         }
     ];
 
-
-
-    const [searchParams] = useSearchParams();
-    const sessionId = searchParams.get('session');
-
     const handleNavigation = () => {
         const url = sessionId ? `/henrys/pricing?session=${sessionId}` : '/henrys/pricing';
         navigate(url);
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-henrys text-slate-900 dark:text-slate-100">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-henrys text-slate-900 dark:text-slate-100 transition-colors duration-500">
             <HenrysHeader />
+
+            {/* 🎩 Magic Pricing Banner */}
+            <div className={`fixed top-0 left-0 w-full bg-orange-600 text-white text-center py-3 font-bold transform transition-transform duration-500 z-50 shadow-lg ${isDiscounted ? 'translate-y-0' : '-translate-y-full'}`}>
+                <div onClick={handleNavigation} className="flex items-center justify-center gap-2 cursor-pointer hover:scale-105 transition-transform">
+                    <Sparkles size={20} fill="white" className="animate-pulse" />
+                    <span className="tracking-widest">MANAGER'S SPECIAL UNLOCKED! CLICK TO VIEW</span>
+                    <Sparkles size={20} fill="white" className="animate-pulse" />
+                </div>
+            </div>
 
             {/* Hero Section */}
             <header className="pt-32 pb-16 px-6 text-center bg-white dark:bg-black relative overflow-hidden">

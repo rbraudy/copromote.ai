@@ -1,71 +1,31 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import HenrysHeader from '../components/Layout/HenrysHeader';
-import { Check, Sparkles } from 'lucide-react'; // Added Sparkles
+import { Check, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { useDiscount } from '../hooks/useDiscount';
 
 const HelpPricing = () => {
     const [searchParams] = useSearchParams();
     const sessionId = searchParams.get('session');
 
-    // Default Prices
-    const [twoYearPrice, setTwoYearPrice] = useState(199);
-    const [threeYearPrice, setThreeYearPrice] = useState(299);
-    const [showDiscountBanner, setShowDiscountBanner] = useState(false);
+    // 🔥 Use Magic Pricing Hook
+    const { price: discountedPrice, isDiscounted, basePrice2yr, basePrice3yr } = useDiscount(sessionId);
+
+    // Default Prices (Initialize with undefined to show loading state)
+    const [twoYearPrice, setTwoYearPrice] = useState<string | undefined>(undefined);
+    const [threeYearPrice, setThreeYearPrice] = useState<string | undefined>(undefined);
 
     const navigate = useNavigate();
 
-    // Fetch Initial Prospect Data & Connect Realtime
+    // Update local state when hook returns new data
     useEffect(() => {
-        if (!sessionId) return;
+        if (basePrice2yr) setTwoYearPrice(basePrice2yr);
+        if (basePrice3yr) setThreeYearPrice(basePrice3yr);
 
-        const fetchProspectData = async () => {
-            console.log("🔍 Fetching Prospect Data for:", sessionId);
-
-            // Use RPC to bypass RLS safely
-            const { data, error } = await supabase
-                .rpc('get_prospect_pricing', { session_id: sessionId })
-                .single();
-
-            if (data) {
-                const prospect = data as any;
-                console.log("✅ Found Prospect Pricing:", data);
-                // Database stores cents, convert to dollars
-                if (prospect.warranty_price_2yr) setTwoYearPrice(prospect.warranty_price_2yr / 100);
-                if (prospect.warranty_price_3yr) setThreeYearPrice(prospect.warranty_price_3yr / 100);
-            } else if (error) {
-                console.error("❌ Error fetching prospect:", error);
-            }
-        };
-
-        fetchProspectData();
-
-        console.log("🔌 Connecting to Realtime Session:", sessionId);
-
-        const channel = supabase
-            .channel('price-updates')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'warranty_sessions',
-                    filter: `id=eq.${sessionId}`
-                },
-                (payload) => {
-                    console.log("⚡ Realtime Update:", payload);
-                    if (payload.new && payload.new.current_price) {
-                        setTwoYearPrice(payload.new.current_price);
-                        setShowDiscountBanner(true);
-                    }
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [sessionId]);
+        if (isDiscounted && discountedPrice) {
+            setTwoYearPrice(discountedPrice);
+        }
+    }, [isDiscounted, discountedPrice, basePrice2yr, basePrice3yr]);
 
     const plans = [
         {
@@ -105,8 +65,8 @@ const HelpPricing = () => {
                 "Transferable"
             ],
             highlight: true,
-            badge: showDiscountBanner ? "SPECIAL OFFER" : "POPULAR", // Dynamic Badge
-            isDiscounted: showDiscountBanner // Flag for styling
+            badge: isDiscounted ? "SPECIAL OFFER" : "POPULAR", // Dynamic Badge
+            isDiscounted: isDiscounted // Flag for styling
         },
         {
             name: "3 Year",
@@ -125,14 +85,14 @@ const HelpPricing = () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleSelectPlan = (plan: any) => {
-        navigate('/henrys/checkout', { state: { plan } });
+        navigate('/henrys/checkout?session=' + sessionId, { state: { plan, prospectId: sessionId } });
     };
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-black font-henrys text-slate-900 dark:text-white transition-colors duration-500">
             <HenrysHeader />
 
-            <div className={`fixed top-0 left-0 w-full bg-orange-600 text-white text-center py-2 font-bold transform transition-transform duration-500 z-50 ${showDiscountBanner ? 'translate-y-0' : '-translate-y-full'}`}>
+            <div className={`fixed top-0 left-0 w-full bg-orange-600 text-white text-center py-2 font-bold transform transition-transform duration-500 z-50 ${isDiscounted ? 'translate-y-0' : '-translate-y-full'}`}>
                 <div className="flex items-center justify-center gap-2">
                     <Sparkles size={20} fill="white" />
                     <span>SPECIAL OFFER APPLIED!</span>
@@ -170,7 +130,7 @@ const HelpPricing = () => {
                             <div className="mb-6">
                                 <span className={`text-4xl font-black transition-all duration-500 ${plan.isDiscounted ? 'text-green-600 scale-110 inline-block' : 'text-black dark:text-white'}`}>{plan.price}</span>
                                 <span className="text-sm text-gray-500 font-medium">{plan.period}</span>
-                                {plan.isDiscounted && <div className="text-xs text-gray-400 line-through mt-1">$199.00</div>}
+                                {plan.isDiscounted && <div className="text-xs text-gray-400 line-through mt-1">${basePrice2yr}</div>}
                             </div>
 
                             <ul className="space-y-4 mb-8 flex-grow">
@@ -245,7 +205,15 @@ const HelpPricing = () => {
                     </p>
                 </div>
             </section>
-        </div>
+
+            {/* DEBUG OVERLAY - REMOVE BEFORE PRODUCTION */}
+            <div className="fixed bottom-0 left-0 bg-black/80 text-white p-2 text-xs font-mono z-50 pointer-events-none">
+                <p>Session: {sessionId || 'None'}</p>
+                <p>Base 2yr: {basePrice2yr ?? 'Loading/Null'}</p>
+                <p>Discount: {isDiscounted ? 'Yes' : 'No'}</p>
+                <p>Hook Price: {discountedPrice ?? 'N/A'}</p>
+            </div>
+        </div >
     );
 };
 

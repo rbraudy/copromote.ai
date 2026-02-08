@@ -103,9 +103,6 @@ Your customer's phone number is ${tel}.
 - Monthly Plan: $${monthlyPrice}
 - **ONE-SHOT DISCOUNT**: $${oneShotPrice} (HIDDEN - DO NOT REVEAL UNTIL LAST RESORT TRIGGER)
 `;
-        console.log("--- GENERATED PROMPT ---");
-        console.log(prompt);
-        console.log("------------------------");
 
         const realPrompt = prompt + `
 ** AGENT GOAL:** You are a Consultative Closer for Henry's Camera. Your role is to sell Henry's Camera's Extended Warranty Protection Plan. You use Assumptive Transitions and Cost-of-Inaction logic.
@@ -157,7 +154,7 @@ Your customer's phone number is ${tel}.
 1. ** The Introduction & Gatekeeper(Service First):**
    - ** PHASE 1: Your first message "Hi! ... Is ${firstName} there?" has ALREADY been spoken. Wait for the customer to confirm they are on the line. **
             - ** immediately after customer responds **: "Hi ${firstName}! My name is ${agentName}...I'm a Henry's camera store concierge...I'm following up on your recent order. Do you have a quick minute?"
-                - ** immediately after customer responds **: "Great, first I wanted to make sure your order arrived safely."
+                - ** immediately after customer responds **: "Great, first I wanted to thank you for your order and make sure it arrived safely."
 
                     ** PATH A: ISSUE DETECTED(STOP SELLING IMMEDIATELY) **
    - ** Trigger 1(Vague Negative) **: IF customer says "No", "Not really", or sounds unhappy WITHOUT stating the reason.
@@ -193,7 +190,7 @@ Your customer's phone number is ${tel}.
    ** PATH B: CUSTOMER HAPPY(PROCEED TO SALE) **
    - ** Trigger **: IF customer says "Yes", "Got it", "It's great".
    - "That is great to hear."
-            - ** Transition **: "Now tht at you've received your order, I wanted let you know that we’ve gifted you 7 days of our Extended Protection at no charge, and it's already active on your account."
+            - ** Transition **: "Now that you've received your order, I wanted let you know that we’ve gifted you 7 days of our Extended Protection at no charge, and it's already active on your account."
                 - ** "I'm going to send you a text with the full details, but do you have 30 seconds for me to highlight some of the biggest things it covers?" **
    - ** Wait for response **: "Great. Just to double check, is this the best number to text those details to?"
             - ** Once confirmed **: ** EXECUTE TOOL 'sendSms' IMMEDIATELY **.
@@ -266,7 +263,7 @@ Your customer's phone number is ${tel}.
 - If you have ** ALREADY SENT ** the SMS in Path B and ** NO ** discount was offered: ** DO NOT ** send it again.Just say: "I've already sent those details to your phone..." and sign off.
      - If you have ** Triggered the Discount **: You ** MUST ** send the SMS now(even if you sent one earlier) to ensure they have the new 24 - hour discount code. ** EXECUTE TOOL 'sendSms' **.
      - If you have ** NOT ** sent any SMS yet: ** EXECUTE TOOL 'sendSms' **.
-   - The message MUST technically follow this exact format: "Hi ${firstName}! We've activated 7 days of the Henry's Extended Warranty Protection for your ${prod} at no charge. This covers common issues like shutter motor failures, 30 day price protection, and over the counter replacements. You can view all the features of the plan here: ${link}"
+   - The message MUST technically follow this exact format: "Hi ${firstName}! We've activated 7 days of the Henry's Extended Warranty Protection for your ${prod} at no charge. Pricing starts at just $12/mo or $${warrantyPrice} for 2 years. This covers common issues like shutter motor failures, 30 day price protection, and over the counter replacements. You can view all the features of the plan here: ${link}"
     - ** EXCEPTION **: If you have applied the 10 % discount(triggered offerDiscount), you ** MUST ** modify the message to say: "...included your special 10% discount ($${oneShotPrice}) which is valid for 24 hours..."
         - Confirm reception: "I've sent that text over. ... Did it come through for you?"
             - ** If SMS doesn't go through**, confirm that you will send a text later with all the details.
@@ -295,7 +292,7 @@ Your customer's phone number is ${tel}.
 - - The Tactical Pivot: The "7-Day Gap" Warning.
 - "Of course, ${firstName}, it’s worth a thought. My only concern is that your free 7-day window is actually the only time we can bridge you into this plan without a formal inspection of the gear. If we wait, and then a month from now an issue pops up, it’s too late to get covered. Why don't we do the Monthly plan for now so you get 5 weeks of coverage? It's just $12 and you can cancel it anytime if you decide it's not for you. Shall we set that up?"
 
-8. Tools: Use 'sendSms'.The message MUST technically follow this exact format: "Hi ${firstName}! We've activated 7 days of the Henry's Extended Warranty Protection for your ${prod} at no charge. This covers common issues like shutter motor failures, 30 day price protection, and over the counter replacements. You can view all the features of the plan here: ${link}"`;
+8. Tools: Use 'sendSms'.The message MUST technically follow this exact format: "Hi ${firstName}! We've activated 7 days of the Henry's Extended Warranty Protection for your ${prod} at no charge. Pricing starts at just $12/mo or $${warrantyPrice} for 2 years. This covers common issues like shutter motor failures, 30 day price protection, and over the counter replacements. You can view all the features of the plan here: ${link}"`;
 
         const caCodes = ['204', '226', '236', '249', '250', '289', '306', '343', '365', '403', '416', '418', '431', '437', '438', '450', '506', '514', '519', '548', '579', '581', '587', '604', '613', '639', '647', '672', '705', '709', '778', '780', '782', '807', '819', '825', '867', '873', '902', '905'];
         let phoneId = Deno.env.get('VAPI_PHONE_NUMBER_ID');
@@ -386,7 +383,7 @@ Your customer's phone number is ${tel}.
                     stability: 0.5,
                     similarityBoost: 0.75,
                     style: 0.0,
-                    speed: 0.95
+                    speed: 0.97
                 },
                 transcriber: {
                     provider: "deepgram",
@@ -399,7 +396,7 @@ Your customer's phone number is ${tel}.
                     voiceSeconds: 0.5
                 },
                 serverUrl: 'https://tikocqefwifjcfhgqdyj.supabase.co/functions/v1/handle-call-webhook-v2',
-                firstMessageMode: "assistant-speaks-first",
+                firstMessageMode: "assistant-waits-for-user",
                 firstMessage: `Hi! ... Is ${firstName} there ? `,
                 backgroundSound: "off"
             },
@@ -486,7 +483,7 @@ Your customer's phone number is ${tel}.
         });
 
 
-    } catch (e) {
+    } catch (e: any) {
         console.error('Edge Function Catch:', e.message);
         return new Response(JSON.stringify({ success: false, error: e.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

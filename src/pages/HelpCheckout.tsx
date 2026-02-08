@@ -9,15 +9,50 @@ const HelpCheckout = () => {
     const { plan } = location.state || { plan: { name: 'Default', price: '$0.00' } };
     const [isProcessing, setIsProcessing] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsProcessing(true);
-        // Simulate API call
-        setTimeout(() => {
+
+        // Get prospectId from session/URL if available, otherwise mock/fail
+        // For now, let's assume session is passed via navigation state or URL
+        // We might need to lift the session check up or pass it down.
+        // Let's grab it from URL params for robustness if state is missing
+        const params = new URLSearchParams(window.location.search);
+        const prospectId = params.get('session') || location.state?.prospectId;
+
+        if (!prospectId) {
+            alert('Error: No active session found. Please return to the pricing page.');
             setIsProcessing(false);
-            alert('Purchase successful! (Mock)');
-            navigate('/henrys');
-        }, 2000);
+            return;
+        }
+
+        try {
+            const { supabase } = await import('../lib/supabase');
+            const { data, error } = await supabase.functions.invoke('process-warranty-sale', {
+                body: {
+                    prospectId,
+                    plan,
+                    paymentDetails: {
+                        // In a real app, collect these from Stripe Elements
+                        method: 'credit_card',
+                        last4: '4242'
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            console.log('Purchase Successful:', data);
+            alert(`Purchase successful! Trans ID: ${data.transactionId}`);
+            // Navigate to a dedicated success page or back home
+            navigate('/henrys?success=true');
+
+        } catch (err: any) {
+            console.error('Checkout Error:', err);
+            alert('Payment failed: ' + (err.message || 'Unknown error'));
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
