@@ -261,7 +261,7 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
 
                     // SECURITY FIX: Use RPC because Firebase Auth doesn't set auth.uid() in Postgres
                     // We pass the user.uid manually, and the RPC looks up the company.
-                    let { data: rpcData, error: insertError } = await supabase
+                    let { error: insertError } = await supabase
                         .rpc('create_prospect', {
                             p_user_id: user.uid,
                             p_prospect: insertPayload
@@ -436,7 +436,7 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
 
                                     <button
                                         onClick={processUpload}
-                                        disabled={isUploading || validationReport?.critical.length}
+                                        disabled={isUploading || !!(validationReport?.critical.length)}
                                         className={`w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg 
                                             ${validationReport?.critical.length ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20'}`}
                                     >

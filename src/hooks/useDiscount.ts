@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
+interface PublicProspect {
+    id: string;
+    warranty_price_2yr: number | null;
+    warranty_price_3yr: number | null;
+    offer_discount_triggered: boolean;
+    discount_price: number | null;
+    discount_expiry: string | null;
+}
+
 export const useDiscount = (sessionId: string | null) => {
     const [price, setPrice] = useState<string | undefined>(undefined);
     const [isDiscounted, setIsDiscounted] = useState(false);
@@ -14,7 +23,7 @@ export const useDiscount = (sessionId: string | null) => {
             // SECURITY FIX: Use RPC function instead of direct SELECT to prevent public table access
             const { data, error } = await supabase
                 .rpc('get_public_prospect', { p_id: sessionId })
-                .single();
+                .single<PublicProspect>(); // Helper generic for RPC result
 
             if (error) {
                 console.error('Error fetching discount:', error);
