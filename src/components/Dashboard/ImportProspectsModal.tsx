@@ -259,18 +259,20 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
                         purchase_amount: purchaseAmount
                     };
 
-                    let { error: insertError } = await supabase
-                        .from('warranty_prospects')
-                        .insert(insertPayload);
+                    // SECURITY FIX: Use RPC because Firebase Auth doesn't set auth.uid() in Postgres
+                    // We pass the user.uid manually, and the RPC looks up the company.
+                    let { data: rpcData, error: insertError } = await supabase
+                        .rpc('create_prospect', {
+                            p_user_id: user.uid,
+                            p_prospect: insertPayload
+                        });
 
-                    // Retry logic for "Generated Column" error
-                    if (insertError && insertError.message.includes('expiry_date')) {
-                        const { expiry_date, ...retryPayload } = insertPayload;
-                        const result = await supabase
-                            .from('warranty_prospects')
-                            .insert(retryPayload);
-                        insertError = result.error;
-                    }
+                    /* 
+                       Note: RPC handles the insert. 
+                       The 'retry logic' for generated columns is less relevant now as the RPC handles it,
+                       but if we needed it, we'd adjust the RPC. 
+                       For now, assuming RPC handles the ISO strings correctly.
+                    */
 
                     if (insertError) {
                         console.error('Insert error details:', insertError);

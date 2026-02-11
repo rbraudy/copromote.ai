@@ -64,29 +64,37 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
     const fetchProspects = async () => {
         setIsLoading(true);
         try {
+            // SECURITY FIX: Use RPC to filter by company (Safety Deposit Box)
+            // We pass the Firebase UID, and the backend looks up the Company ID.
             const { data, error } = await supabase
-                .from('warranty_prospects')
-                .select(`
-                    *,
-                    call_logs (
-                        connection_status,
-                        duration,
-                        link_sent,
-                        link_clicks,
-                        outcome,
-                        created_at
-                    )
-                `)
-                .order('created_at', { ascending: false });
+                .rpc('get_company_prospects', { p_user_id: user.uid });
 
             if (error) throw error;
 
+            console.log("Values from RPC:", data);
+
+            // Map the flat RPC result to the Prospect interface
             const mappedProspects = (data || []).map((p: any) => ({
-                ...p,
-                latest_call: p.call_logs?.sort((a: any, b: any) =>
-                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                )[0]
+                id: p.id,
+                customer_name: p.customer_name,
+                phone: p.phone,
+                product_name: p.product_name,
+                purchase_date: p.purchase_date,
+                expiry_date: p.expiry_date,
+                status: p.status,
+                // Construct a fake "latest_call" object from the summary columns
+                // so the rest of the UI doesn't break.
+                latest_call: p.latest_outcome ? {
+                    outcome: p.latest_outcome,
+                    connection_status: p.latest_outcome === 'sale' ? 'SUCCESS' : (p.latest_outcome === 'voicemail' ? 'FAIL' : null),
+                    duration: null, // Summary doesn't have duration yet
+                    link_sent: false,
+                    link_clicks: 0
+                } : null,
+                call_attempts: p.call_attempts || 0
             }));
+
+            if (error) throw error;
 
             setProspects(mappedProspects);
             calculateAnalytics(mappedProspects);

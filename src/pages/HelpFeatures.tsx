@@ -1,5 +1,6 @@
 import HenrysHeader from '../components/Layout/HenrysHeader';
-import { Shield, Settings, Globe, RefreshCcw, UserCheck, AlertTriangle, Percent, Calendar, DollarSign, Sparkles } from 'lucide-react';
+import { Shield, Settings, Globe, RefreshCcw, UserCheck, AlertTriangle, Percent, Calendar, DollarSign, Sparkles, Check, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDiscount } from '../hooks/useDiscount';
@@ -11,6 +12,18 @@ const HelpFeatures = () => {
 
     // 🔥 Magic Pricing Hook
     const { isDiscounted } = useDiscount(sessionId);
+
+    // 🏆 Success Modal State
+    const [showSuccess, setShowSuccess] = useState(false);
+
+    useEffect(() => {
+        if (searchParams.get('success') === 'true') {
+            setShowSuccess(true);
+            // Optional: Clean URL
+            // navigate('/henrys', { replace: true }); 
+            // Better to keep it for refresh persistence or handle via state
+        }
+    }, [searchParams]);
 
     const features = [
         {
@@ -77,6 +90,40 @@ const HelpFeatures = () => {
                     <Sparkles size={20} fill="white" className="animate-pulse" />
                 </div>
             </div>
+
+            {/* ✅ Success Modal */}
+            {
+                showSuccess && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-zinc-900 border-2 border-green-500 max-w-md w-full p-8 relative shadow-2xl transform animate-in zoom-in-95 duration-300">
+                            <button
+                                onClick={() => setShowSuccess(false)}
+                                className="absolute top-4 right-4 text-gray-400 hover:text-black dark:hover:text-white"
+                            >
+                                <X size={24} />
+                            </button>
+
+                            <div className="flex justify-center mb-6">
+                                <div className="w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                                    <Check size={40} className="text-green-600 dark:text-green-400" />
+                                </div>
+                            </div>
+
+                            <h2 className="text-3xl font-black text-center uppercase italic mb-4">You're Covered!</h2>
+                            <p className="text-center text-gray-600 dark:text-gray-300 mb-8 text-lg">
+                                Thank you for adding H.E.L.P. to your gear. A confirmation email has been sent to your inbox.
+                            </p>
+
+                            <button
+                                onClick={() => setShowSuccess(false)}
+                                className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold uppercase tracking-wider"
+                            >
+                                Continue Shopping
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
 
             {/* Hero Section */}
             <header className="pt-32 pb-16 px-6 text-center bg-white dark:bg-black relative overflow-hidden">
@@ -159,7 +206,7 @@ const HelpFeatures = () => {
                     </button>
                 </div>
             </section>
-        </div>
+        </div >
     );
 };
 

@@ -11,10 +11,9 @@ export const useDiscount = (sessionId: string | null) => {
         if (!sessionId) return;
 
         const fetchDiscount = async () => {
+            // SECURITY FIX: Use RPC function instead of direct SELECT to prevent public table access
             const { data, error } = await supabase
-                .from('warranty_prospects')
-                .select('warranty_price_2yr, warranty_price_3yr, offer_discount_triggered, discount_price, discount_expiry')
-                .eq('id', sessionId)
+                .rpc('get_public_prospect', { p_id: sessionId })
                 .single();
 
             if (error) {
