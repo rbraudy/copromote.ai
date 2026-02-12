@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import Modal from '../UI/Modal';
-import { auth, db } from '../../lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+// import { auth, db } from '../../lib/firebase'; // Removed
+// import { createUserWithEmailAndPassword } from 'firebase/auth'; // Removed
+// import { doc, setDoc } from 'firebase/firestore'; // Removed
+import { supabase } from '../../lib/supabase';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface WarrantySignUpModalProps {
     isOpen: boolean;
@@ -13,9 +15,11 @@ const WarrantySignUpModal: React.FC<WarrantySignUpModalProps> = ({ isOpen, onClo
     const [formData, setFormData] = useState({
         fullName: '',
         businessName: '',
-        email: ''
+        email: '',
+        password: '' // Added password field for Supabase Auth
     });
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -27,23 +31,30 @@ const WarrantySignUpModal: React.FC<WarrantySignUpModalProps> = ({ isOpen, onClo
         setLoading(true);
 
         try {
-            // 1. Create User in Firebase Auth (using a default password for this demo flow)
-            const userCredential = await createUserWithEmailAndPassword(auth, formData.email, "copromote123");
-            const user = userCredential.user;
-
-            // 2. Save additional details to Firestore
-            await setDoc(doc(db, "users", user.uid), {
-                fullName: formData.fullName,
-                businessName: formData.businessName,
+            // 1. Create User in Supabase Auth
+            const { data, error } = await supabase.auth.signUp({
                 email: formData.email,
-                type: 'warranty_user', // Tagging them specifically
-                createdAt: new Date().toISOString()
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.fullName,
+                        business_name: formData.businessName,
+                        type: 'warranty_user' // Meta data for Trigger to use
+                    }
+                }
             });
 
-            console.log('User Registered:', user.uid);
-            alert(`Welcome, ${formData.fullName}! Your warranty account has been created.`);
-            onClose();
-            setFormData({ fullName: '', businessName: '', email: '' });
+            if (error) throw error;
+
+            if (data.user) {
+                console.log('User Registered:', data.user.id);
+                // Note: We need a Database Trigger to create the 'user_profiles' and 'companies' records
+                // based on this metadata. We will implement that next.
+
+                alert(`Welcome, ${formData.fullName}! Please check your email to confirm your account.`);
+                onClose();
+                setFormData({ fullName: '', businessName: '', email: '', password: '' });
+            }
         } catch (error: any) {
             console.error("Error signing up:", error);
             alert(`Error: ${error.message}`);
@@ -101,6 +112,31 @@ const WarrantySignUpModal: React.FC<WarrantySignUpModalProps> = ({ isOpen, onClo
                         className="w-full p-3 rounded-lg bg-primary-dark border border-slate-700 text-white focus:ring-2 focus:ring-accent-blue focus:border-transparent outline-none transition-all"
                         placeholder="you@company.com"
                     />
+                </div>
+
+                <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1">
+                        Password
+                    </label>
+                    <div className="relative">
+                        <input
+                            type={showPassword ? "text" : "password"}
+                            id="password"
+                            name="password"
+                            required
+                            value={formData.password}
+                            onChange={handleChange}
+                            className="w-full p-3 pr-10 rounded-lg bg-primary-dark border border-slate-700 text-white focus:ring-2 focus:ring-accent-blue focus:border-transparent outline-none transition-all"
+                            placeholder="••••••••"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                        >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                    </div>
                 </div>
 
                 <button

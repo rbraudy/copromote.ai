@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { auth } from './lib/firebase';
-import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { TenantProvider } from './contexts/TenantContext';
 import Header from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
 import SignInModal from './components/Auth/SignInModal';
@@ -12,39 +12,29 @@ import NewDesign from './pages/NewDesign';
 import HelpFeatures from './pages/HelpFeatures';
 import HelpPricing from './pages/HelpPricing';
 import HelpCheckout from './pages/HelpCheckout';
+import Settings from './pages/Settings';
 
 function DashboardLayout() {
-    const [user, setUser] = useState<User | null>(null);
+    const { user, loading } = useAuth(); // Use Supabase Auth Hook
     const [isSignInOpen, setIsSignInOpen] = useState(false);
     const [isSignUpOpen, setIsSignUpOpen] = useState(false);
-
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
-        });
-        return () => unsubscribe();
-    }, []);
-
-    const handleSignOut = async () => {
-        try {
-            await signOut(auth);
-        } catch (error) {
-            console.error("Error signing out:", error);
-        }
-    };
 
     return (
         <div className="min-h-screen flex flex-col">
             <Header
-                userEmail={user?.email || null}
                 onSignInClick={() => setIsSignInOpen(true)}
                 onSignUpClick={() => setIsSignUpOpen(true)}
-                onSignOutClick={handleSignOut}
             />
             <main className="flex-grow">
-                {user ? (
+                {loading ? (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                ) : user ? (
                     <div className="container mx-auto px-4 pt-24 pb-8">
-                        <WarrantyDashboard user={user} />
+                        {/* We cast to any because WarrantyDashboard expects a Firebase User (for now) */}
+                        {/* But Supabase User is compatible enough for now, we'll fix WarrantyDashboard next */}
+                        <WarrantyDashboard user={user as any} />
                     </div>
                 ) : (
                     <NewDesign />
@@ -54,13 +44,12 @@ function DashboardLayout() {
             <SignInModal
                 isOpen={isSignInOpen}
                 onClose={() => setIsSignInOpen(false)}
-                onSignInSuccess={(user) => {
-                    setUser(user);
+                onSignInSuccess={() => {
+                    // Auth state matches automatically via context
                     setIsSignInOpen(false);
                 }}
             />
             <WarrantySignUpModal isOpen={isSignUpOpen} onClose={() => setIsSignUpOpen(false)} />
-            {/* <SignUpModal isOpen={isSignUpOpen} onClose={() => setIsSignUpOpen(false)} /> */}
         </div>
     );
 }
@@ -69,15 +58,20 @@ function DashboardLayout() {
 
 function App() {
     return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/design-v2" element={<NewDesign />} />
-                <Route path="/henrys" element={<HelpFeatures />} />
-                <Route path="/henrys/pricing" element={<HelpPricing />} />
-                <Route path="/henrys/checkout" element={<HelpCheckout />} />
-                <Route path="/*" element={<DashboardLayout />} />
-            </Routes>
-        </BrowserRouter>
+        <TenantProvider>
+            <AuthProvider>
+                <BrowserRouter>
+                    <Routes>
+                        <Route path="/design-v2" element={<NewDesign />} />
+                        <Route path="/henrys" element={<HelpFeatures />} />
+                        <Route path="/henrys/pricing" element={<HelpPricing />} />
+                        <Route path="/henrys/checkout" element={<HelpCheckout />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/*" element={<DashboardLayout />} />
+                    </Routes>
+                </BrowserRouter>
+            </AuthProvider>
+        </TenantProvider>
     );
 }
 

@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
     ArrowRight, TrendingUp, Users,
     BarChart3, Upload, Play, CheckCircle2,
     Zap, BrainCircuit, MessageSquare
 } from 'lucide-react';
-import { auth } from '../lib/firebase';
-import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Layout/Header';
 import SignInModal from '../components/Auth/SignInModal';
 // import SignUpModal from '../components/Auth/SignUpModal'; // Keeping for reference
@@ -14,25 +13,12 @@ import { DemoCallModal } from '../components/Dashboard/DemoCallModal';
 
 const NewDesign = () => {
     const [activeTab, setActiveTab] = useState('campaign');
-    const [user, setUser] = useState<User | null>(null);
+    // user and signOut are now managed by useAuth
+    const { user } = useAuth();
+    // Restoring local state for Modals
     const [isSignInOpen, setIsSignInOpen] = useState(false);
     const [isSignUpOpen, setIsSignUpOpen] = useState(false);
     const [isDemoOpen, setIsDemoOpen] = useState(false);
-
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
-        });
-        return () => unsubscribe();
-    }, []);
-
-    const handleSignOut = async () => {
-        try {
-            await signOut(auth);
-        } catch (error) {
-            console.error("Error signing out:", error);
-        }
-    };
 
     const handleViewDemo = () => {
         if (user) {
@@ -45,10 +31,8 @@ const NewDesign = () => {
     return (
         <div className="min-h-screen bg-slate-950 text-slate-50 font-sans selection:bg-blue-500/30">
             <Header
-                userEmail={user?.email || null}
                 onSignInClick={() => setIsSignInOpen(true)}
                 onSignUpClick={() => setIsSignUpOpen(true)}
-                onSignOutClick={handleSignOut}
             />
 
             {/* Hero Section */}
@@ -88,8 +72,8 @@ const NewDesign = () => {
             <SignInModal
                 isOpen={isSignInOpen}
                 onClose={() => setIsSignInOpen(false)}
-                onSignInSuccess={(user) => {
-                    setUser(user);
+                onSignInSuccess={() => {
+                    // Auth state matches automatically via context
                     setIsSignInOpen(false);
                 }}
             />

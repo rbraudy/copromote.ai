@@ -8,8 +8,15 @@
     scroll-behavior: smooth;
   }
 
+  :root {
+    --tenant-primary: #3B82F6;
+    /* Default Blue */
+    --tenant-secondary: #0F172A;
+    /* Default Slate */
+  }
+
   body {
-    @apply bg-primary-dark text-white font-sans antialiased;
+    @apply bg-white dark:bg-primary-dark text-slate-900 dark:text-white font-sans antialiased;
   }
 }
 

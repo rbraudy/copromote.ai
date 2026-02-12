@@ -11,6 +11,23 @@ const HelpPricing = () => {
     // 🔥 Use Magic Pricing Hook
     const { price: discountedPrice, isDiscounted, basePrice2yr, basePrice3yr } = useDiscount(sessionId);
 
+    // 🔒 Security Gate: Require Session ID
+    if (!sessionId) {
+        return (
+            <div className="min-h-screen bg-slate-50 dark:bg-black font-henrys flex items-center justify-center p-6 text-center">
+                <div className="max-w-md w-full bg-white dark:bg-zinc-900 p-8 border-t-4 border-orange-600 shadow-xl">
+                    <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800">
+                        <Check className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h1 className="text-2xl font-black uppercase italic mb-4 text-slate-900 dark:text-white">Access Denied</h1>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        Please use the secure link provided in your text message to view pricing.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     // Default Prices (Initialize with undefined to show loading state)
     const [twoYearPrice, setTwoYearPrice] = useState<string | undefined>(undefined);
     const [threeYearPrice, setThreeYearPrice] = useState<string | undefined>(undefined);

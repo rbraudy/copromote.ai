@@ -13,6 +13,24 @@ const HelpFeatures = () => {
     // 🔥 Magic Pricing Hook
     const { isDiscounted } = useDiscount(sessionId);
 
+    // 🔒 Security Gate: Require Session ID (from SMS)
+    if (!sessionId) {
+        return (
+            <div className="min-h-screen bg-slate-50 dark:bg-black font-henrys flex items-center justify-center p-6 text-center">
+                <div className="max-w-md w-full bg-white dark:bg-zinc-900 p-8 border-t-4 border-orange-600 shadow-xl">
+                    <Shield className="w-16 h-16 text-gray-300 mx-auto mb-6" />
+                    <h1 className="text-2xl font-black uppercase italic mb-4 text-slate-900 dark:text-white">Link Expired or Invalid</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mb-8">
+                        For security, this offer is only accessible via the unique link sent to your mobile device.
+                    </p>
+                    <div className="text-sm text-gray-400">
+                        Please check your text messages and try again.
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     // 🏆 Success Modal State
     const [showSuccess, setShowSuccess] = useState(false);
 

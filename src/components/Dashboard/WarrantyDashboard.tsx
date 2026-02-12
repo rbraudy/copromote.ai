@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, PhoneCall, Loader2, FileText, AlertCircle, PlayCircle, Upload, LayoutDashboard, BarChart3, TrendingUp, CheckCircle, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { User } from 'firebase/auth';
+import { User } from '@supabase/supabase-js';
 import { CallTranscriptModal } from './CallTranscriptModal';
 import { DemoCallModal } from './DemoCallModal';
 import { ImportProspectsModal } from './ImportProspectsModal';
@@ -64,17 +64,18 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
     const fetchProspects = async () => {
         setIsLoading(true);
         try {
-            // SECURITY FIX: Use RPC to filter by company (Safety Deposit Box)
-            // We pass the Firebase UID, and the backend looks up the Company ID.
+            // SECURITY FIX: Replaced RPC with direct Select. RLS handles the filtering.
             const { data, error } = await supabase
-                .rpc('get_company_prospects', { p_user_id: user.uid });
+                .from('warranty_prospects')
+                .select('*')
+                .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            console.log("Values from RPC:", data);
+            console.log("Values from Supabase:", data);
 
-            // Map the flat RPC result to the Prospect interface
-            const mappedProspects = (data || []).map((p: any) => ({
+            // Map result to the Prospect interface
+            const mappedProspects: Prospect[] = (data || []).map((p: any) => ({
                 id: p.id,
                 customer_name: p.customer_name,
                 phone: p.phone,
@@ -90,7 +91,7 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
                     duration: null, // Summary doesn't have duration yet
                     link_sent: false,
                     link_clicks: 0
-                } : null,
+                } : undefined, // Changed from null to undefined to match optional type
                 call_attempts: p.call_attempts || 0
             }));
 

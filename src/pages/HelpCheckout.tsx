@@ -8,6 +8,27 @@ const HelpCheckout = () => {
     const navigate = useNavigate();
     const { plan } = location.state || { plan: { name: 'Default', price: '$0.00' } };
     const [isProcessing, setIsProcessing] = useState(false);
+    const [termsAccepted, setTermsAccepted] = useState(false);
+
+    // 🔒 Security Gate: Strict Session Check
+    const params = new URLSearchParams(window.location.search);
+    const prospectId = params.get('session') || location.state?.prospectId;
+
+    if (!prospectId) {
+        return (
+            <div className="min-h-screen bg-slate-50 dark:bg-black font-henrys flex items-center justify-center p-6 text-center">
+                <div className="max-w-md w-full bg-white dark:bg-zinc-900 p-8 border-t-4 border-orange-600 shadow-xl">
+                    <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800">
+                        <Lock className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h1 className="text-2xl font-black uppercase italic mb-4 text-slate-900 dark:text-white">Secure Checkout</h1>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        This checkout session has expired or is invalid. Please restart the process from the link in your text message.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -93,12 +114,26 @@ const HelpCheckout = () => {
                                 </div>
                             </div>
 
+                            <div className="flex items-start gap-3 my-4 p-4 bg-gray-50 dark:bg-zinc-800/50 rounded-lg border border-gray-100 dark:border-zinc-800">
+                                <input
+                                    type="checkbox"
+                                    id="terms"
+                                    required
+                                    checked={termsAccepted}
+                                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                                    className="mt-1 w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-orange-600 cursor-pointer"
+                                />
+                                <label htmlFor="terms" className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+                                    I confirm that my product is in good working order and I agree to the <a href="#" className="font-bold underline hover:text-orange-600 transition-colors">Terms & Conditions</a> of the Henry's Extended Protection Plan.
+                                </label>
+                            </div>
+
                             <button
                                 type="submit"
-                                disabled={isProcessing}
-                                className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white font-black uppercase tracking-wider transition-all shadow-lg hover:shadow-orange-600/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={isProcessing || !termsAccepted}
+                                className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white font-black uppercase tracking-wider transition-all shadow-lg hover:shadow-orange-600/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
                             >
-                                {isProcessing ? 'Processing...' : `Pay ${plan.price} Now`} <Lock size={18} />
+                                {isProcessing ? 'Processing...' : `Pay ${plan.price} Now`} <Lock size={18} className="group-hover:scale-110 transition-transform" />
                             </button>
 
                             <p className="text-xs text-center text-gray-500 flex items-center justify-center gap-1">

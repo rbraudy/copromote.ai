@@ -58,7 +58,12 @@ const parseCurrency = (value: any): number | null => {
 };
 
 
+// Import useAuth as well
+import { useAuth } from '../../contexts/AuthContext';
+
 export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOpen, onClose, onSuccess, user }) => {
+    // Destructure companyId from context
+    const { companyId } = useAuth();
     const [isDragging, setIsDragging] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
@@ -230,6 +235,14 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
                     expiryDate.setDate(expiryDate.getDate() + 30);
 
                     if (!name || !phone || !product) {
+                        const missing = [];
+                        if (!name) missing.push('Name');
+                        if (!phone) missing.push('Phone');
+                        if (!product) missing.push('Product');
+
+                        const msg = `Skipped row: Missing ${missing.join(', ')}`;
+                        console.error(msg, row);
+                        if (!capturedError) capturedError = msg;
                         failedCount++;
                         continue;
                     }
@@ -259,20 +272,19 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
                         purchase_amount: purchaseAmount
                     };
 
-                    // SECURITY FIX: Use RPC because Firebase Auth doesn't set auth.uid() in Postgres
-                    // We pass the user.uid manually, and the RPC looks up the company.
-                    let { error: insertError } = await supabase
-                        .rpc('create_prospect', {
-                            p_user_id: user.uid,
-                            p_prospect: insertPayload
-                        });
 
-                    /* 
-                       Note: RPC handles the insert. 
-                       The 'retry logic' for generated columns is less relevant now as the RPC handles it,
-                       but if we needed it, we'd adjust the RPC. 
-                       For now, assuming RPC handles the ISO strings correctly.
-                    */
+                    if (!companyId) {
+                        throw new Error("User has no company assigned (AuthContext).");
+                    }
+
+                    insertPayload.company_id = companyId;
+
+
+
+                    // SECURITY FIX: Direct Insert with RLS
+                    const { error: insertError } = await supabase
+                        .from('warranty_prospects')
+                        .insert([insertPayload]);
 
                     if (insertError) {
                         console.error('Insert error details:', insertError);

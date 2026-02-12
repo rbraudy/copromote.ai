@@ -4,6 +4,7 @@ export default {
         "./index.html",
         "./src/**/*.{js,ts,jsx,tsx}",
     ],
+    darkMode: 'class',
     theme: {
         extend: {
             fontFamily: {
@@ -15,6 +16,8 @@ export default {
                 'secondary-dark': '#1E293B', // Slate 800
                 'accent-blue': '#3B82F6', // Blue 500
                 'accent-purple': '#8B5CF6', // Violet 500
+                'tenant-primary': 'var(--tenant-primary)',
+                'tenant-secondary': 'var(--tenant-secondary)',
             }
         },
     },

@@ -23,9 +23,25 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, []);
 
     useEffect(() => {
-        document.documentElement.classList.remove('light', 'dark');
-        document.documentElement.classList.add(theme);
+        console.log('Theme changed to:', theme);
+        const root = document.documentElement;
+
+        if (theme === 'dark') {
+            root.classList.add('dark');
+            root.classList.remove('light');
+            // Fallback: Force body background if Tailwind fails
+            document.body.style.backgroundColor = '#0F172A';
+            document.body.style.color = '#ffffff';
+        } else {
+            root.classList.add('light');
+            root.classList.remove('dark');
+            // Fallback: Force body background if Tailwind fails
+            document.body.style.backgroundColor = '#ffffff';
+            document.body.style.color = '#0F172A';
+        }
+
         localStorage.setItem('theme', theme);
+        console.log('Class list:', root.classList.value);
     }, [theme]);
 
     const toggleTheme = () => {
