@@ -1,5 +1,4 @@
-// ProductCatalog component migrated to Supabase
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, RefreshCw, Trash2, Grid, List, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Product, User } from '../../types';
@@ -16,7 +15,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
-    const [syncStatus, setSyncStatus] = useState('');
+    const [, setSyncStatus] = useState('');
     const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0 });
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -28,8 +27,8 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    const isSyncingRef = React.useRef(false);
-    const observerTarget = React.useRef(null);
+    const isSyncingRef = useRef(false);
+    const observerTarget = useRef(null);
 
     // ---------------------------------------------------------------
     // 1️⃣ Helper: invoke the Supabase Edge Function to upsert products
@@ -94,7 +93,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
             let fetchedProducts: Product[] = [];
 
             const onBatch = (
-                batch: Product[],
+                _batch: Product[],
                 _page: number,
                 totalSoFar: number,
                 totalCount?: number

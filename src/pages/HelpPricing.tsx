@@ -1,215 +1,252 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import HenrysHeader from '../components/Layout/HenrysHeader';
-import { Check, Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useDiscount } from '../hooks/useDiscount';
+import {
+    Clock,
+    Shield,
+    ArrowRight,
+    Zap,
+    Recycle
+} from 'lucide-react';
+
+interface PublicProspect {
+    id: string;
+    warranty_price_2yr: number | null;
+    warranty_price_3yr: number | null;
+    offer_discount_triggered: boolean;
+    discount_price: number | null;
+    discount_expiry: string | null;
+}
 
 const HelpPricing = () => {
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const sessionId = searchParams.get('session');
 
-    // 🔥 Use Magic Pricing Hook
-    const { price: discountedPrice, isDiscounted, basePrice2yr, basePrice3yr } = useDiscount(sessionId);
+    // --- Inlined Pricing Logic (to avoid HMR import issues) ---
+    const [priceState, setPriceState] = useState<{
+        discountedPrice: string | undefined;
+        isDiscounted: boolean;
+        basePrice2yr: string | undefined;
+        basePrice3yr: string | undefined;
+        loading: boolean;
+    }>({
+        discountedPrice: undefined,
+        isDiscounted: false,
+        basePrice2yr: undefined,
+        basePrice3yr: undefined,
+        loading: true
+    });
 
-    // 🔒 Security Gate: Require Session ID
-    if (!sessionId) {
-        return (
-            <div className="min-h-screen bg-slate-50 dark:bg-black font-henrys flex items-center justify-center p-6 text-center">
-                <div className="max-w-md w-full bg-white dark:bg-zinc-900 p-8 border-t-4 border-orange-600 shadow-xl">
-                    <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800">
-                        <Check className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h1 className="text-2xl font-black uppercase italic mb-4 text-slate-900 dark:text-white">Access Denied</h1>
-                    <p className="text-gray-600 dark:text-gray-400">
-                        Please use the secure link provided in your text message to view pricing.
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    // Default Prices (Initialize with undefined to show loading state)
-    const [twoYearPrice, setTwoYearPrice] = useState<string | undefined>(undefined);
-    const [threeYearPrice, setThreeYearPrice] = useState<string | undefined>(undefined);
-
-    const navigate = useNavigate();
-
-    // Update local state when hook returns new data
     useEffect(() => {
-        if (basePrice2yr) setTwoYearPrice(basePrice2yr);
-        if (basePrice3yr) setThreeYearPrice(basePrice3yr);
-
-        if (isDiscounted && discountedPrice) {
-            setTwoYearPrice(discountedPrice);
+        if (!sessionId) {
+            setPriceState(prev => ({ ...prev, loading: false }));
+            return;
         }
-    }, [isDiscounted, discountedPrice, basePrice2yr, basePrice3yr]);
 
-    const plans = [
-        {
-            name: "Monthly",
-            price: "$12",
-            period: "/month",
-            features: [
-                "Cancel anytime",
-                "100% Coverage",
-                "Anti-Lemon Policy",
-                "Transferable"
-            ],
-            highlight: false
-        },
-        {
-            name: "2 Year",
-            price: `$${twoYearPrice}`, // Dynamic Price
-            period: "/one-time",
-            features: [
-                "2 Year Extension",
-                "Best Value for Mid-Range",
-                "100% Coverage",
-                "Anti-Lemon Policy",
-                "Transferable"
-            ],
-            highlight: true,
-            badge: isDiscounted ? "SPECIAL OFFER" : "POPULAR", // Dynamic Badge
-            isDiscounted: isDiscounted // Flag for styling
-        },
-        {
-            name: "3 Year",
-            price: `$${threeYearPrice}`,
-            period: "/one-time",
-            features: [
-                "3 Year Extension",
-                "Maximum Protection",
-                "100% Coverage",
-                "Anti-Lemon Policy",
-                "Transferable"
-            ],
-            highlight: false
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!UUID_REGEX.test(sessionId)) {
+            console.error('HelpPricing: Invalid UUID session ID');
+            setPriceState(prev => ({ ...prev, loading: false }));
+            return;
         }
-    ];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const fetchPrices = async () => {
+            console.log('HelpPricing: Fetching Supabase data for:', sessionId);
+            const { data, error } = await supabase
+                .rpc('get_public_prospect', { p_id: sessionId })
+                .single<PublicProspect>();
+
+            if (error) {
+                console.error('HelpPricing: Supabase Error:', error);
+                setPriceState(prev => ({ ...prev, loading: false }));
+                return;
+            }
+
+            if (data) {
+                console.log('HelpPricing: Data received:', data);
+                const format = (cents: number | null) => (cents ? (cents / 100).toFixed(2) : undefined);
+
+                setPriceState({
+                    discountedPrice: format(data.discount_price),
+                    isDiscounted: !!data.offer_discount_triggered,
+                    basePrice2yr: format(data.warranty_price_2yr),
+                    basePrice3yr: format(data.warranty_price_3yr),
+                    loading: false
+                });
+            } else {
+                setPriceState(prev => ({ ...prev, loading: false }));
+            }
+        };
+
+        fetchPrices();
+
+        // Realtime Subscription
+        const channel = supabase
+            .channel(`pricing_${sessionId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'warranty_prospects',
+                    filter: `id=eq.${sessionId}`
+                },
+                (payload) => {
+                    console.log('HelpPricing: Realtime Update:', payload.new);
+                    const newData = payload.new as PublicProspect;
+                    const format = (cents: number | null) => (cents ? (cents / 100).toFixed(2) : undefined);
+
+                    setPriceState(prev => ({
+                        ...prev,
+                        discountedPrice: format(newData.discount_price),
+                        isDiscounted: !!newData.offer_discount_triggered,
+                        basePrice2yr: format(newData.warranty_price_2yr),
+                        basePrice3yr: format(newData.warranty_price_3yr)
+                    }));
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [sessionId]);
+    // ---------------------------------------------------------
+
+    const { discountedPrice, isDiscounted, basePrice2yr, basePrice3yr } = priceState;
+
+    // Fallbacks
+    const display2yr = discountedPrice || basePrice2yr || '199.00';
+    const display3yr = basePrice3yr || '299.00';
+    const monthlyPrice = (parseFloat(display2yr) / 16.5).toFixed(2);
+
     const handleSelectPlan = (plan: any) => {
         navigate('/henrys/checkout?session=' + sessionId, { state: { plan, prospectId: sessionId } });
     };
 
+    const highlights = [
+        { icon: <Clock className="w-5 h-5" />, title: 'No Waiting', desc: 'Over-the-counter exchanges on top items.' },
+        { icon: <Shield className="w-5 h-5" />, title: 'Full Coverage', desc: '100% parts and labor, zero deductible.' },
+        { icon: <Zap className="w-5 h-5" />, title: 'Lemon Proof', desc: 'Replace after 3 repairs for the same issue.' }
+    ];
+
+    const plans = [
+        {
+            name: 'Flex Monthly',
+            price: `$${monthlyPrice}`,
+            period: '/mo',
+            desc: 'Cancel anytime. Peace of mind for as long as you need it.',
+            icon: <Recycle className="w-6 h-6 text-blue-500" />,
+            popular: false
+        },
+        {
+            name: '2-Year Protection',
+            price: `$${display2yr}`,
+            period: ' total',
+            desc: 'Our most popular choice. Locked-in savings for 24 months.',
+            icon: <Shield className="w-6 h-6 text-green-500" />,
+            popular: true,
+            isDiscounted: isDiscounted
+        },
+        {
+            name: '3-Year Ultimate',
+            price: `$${display3yr}`,
+            period: ' total',
+            desc: 'Maximum protection. Best for expensive professional gear.',
+            icon: <Zap className="w-6 h-6 text-amber-500" />,
+            popular: false
+        }
+    ];
+
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-black font-henrys text-slate-900 dark:text-white transition-colors duration-500">
+        <div className="min-h-screen bg-slate-50">
             <HenrysHeader />
 
-            <div className={`fixed top-0 left-0 w-full bg-orange-600 text-white text-center py-2 font-bold transform transition-transform duration-500 z-50 ${isDiscounted ? 'translate-y-0' : '-translate-y-full'}`}>
-                <div className="flex items-center justify-center gap-2">
-                    <Sparkles size={20} fill="white" />
-                    <span>SPECIAL OFFER APPLIED!</span>
-                    <Sparkles size={20} fill="white" />
-                </div>
-            </div>
-
-            <header className="pt-32 pb-12 px-6 text-center">
-                <div className="max-w-4xl mx-auto">
-                    <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 uppercase italic">
-                        Choose Your <span className="text-orange-600">Protection</span>
-                    </h1>
-                    <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                        Flexible plans designed to keep you shooting.
+            <div className="max-w-7xl mx-auto px-4 py-12">
+                {/* Hero Section */}
+                <div className="text-center mb-16">
+                    <h1 className="text-4xl font-bold text-slate-900 mb-4">Protect Your Investment</h1>
+                    <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                        You've got the gear, now get the coverage. Henry's Extended Protection (HELP)
+                        goes above and beyond traditional warranties.
                     </p>
                 </div>
-            </header>
 
-            <section className="py-12 px-6 max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {plans.map((plan, idx) => (
+                {/* Highlights */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+                    {highlights.map((h, i) => (
+                        <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start space-x-4">
+                            <div className="p-2 bg-blue-50 rounded-lg text-blue-600">{h.icon}</div>
+                            <div>
+                                <h3 className="font-bold text-slate-900">{h.title}</h3>
+                                <p className="text-sm text-slate-500">{h.desc}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Pricing Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {plans.map((plan, i) => (
                         <div
-                            key={idx}
-                            className={`relative p-8 rounded-none border-2 flex flex-col transition-all duration-500 ${plan.highlight
-                                ? 'border-orange-600 bg-white dark:bg-zinc-900 scale-105 shadow-2xl z-10'
-                                : 'border-gray-200 dark:border-zinc-800 bg-white dark:bg-black hover:border-orange-600/50'
-                                } ${plan.isDiscounted ? 'ring-4 ring-orange-500/50 shadow-orange-500/20' : ''}`}
+                            key={i}
+                            className={`relative bg-white rounded-2xl p-8 border ${plan.popular ? 'border-blue-500 ring-4 ring-blue-50/50 shadow-xl' : 'border-slate-200 shadow-sm'} flex flex-col`}
                         >
-                            {plan.badge && (
-                                <div className={`absolute top-0 right-0 text-white text-xs font-bold px-3 py-1 uppercase tracking-wider transition-colors duration-300 ${plan.isDiscounted ? 'bg-green-600 animate-pulse' : 'bg-orange-600'}`}>
-                                    {plan.badge}
+                            {plan.popular && (
+                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-bold">
+                                    Best Value
                                 </div>
                             )}
-                            <h3 className="text-xl font-bold mb-2 uppercase">{plan.name}</h3>
+
                             <div className="mb-6">
-                                <span className={`text-4xl font-black transition-all duration-500 ${plan.isDiscounted ? 'text-green-600 scale-110 inline-block' : 'text-black dark:text-white'}`}>{plan.price}</span>
-                                <span className="text-sm text-gray-500 font-medium">{plan.period}</span>
-                                {plan.isDiscounted && <div className="text-xs text-gray-400 line-through mt-1">${basePrice2yr}</div>}
+                                <div className="mb-4">{plan.icon}</div>
+                                <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
+                                <p className="text-sm text-slate-500">{plan.desc}</p>
                             </div>
 
-                            <ul className="space-y-4 mb-8 flex-grow">
-                                {plan.features.map((feature, fIdx) => (
-                                    <li key={fIdx} className="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-300">
-                                        <Check size={18} className="text-orange-600 shrink-0 mt-0.5" />
-                                        <span>{feature}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                            <div className="mb-8">
+                                {plan.isDiscounted && (
+                                    <span className="text-sm text-green-600 font-bold bg-green-50 px-2 py-1 rounded mb-2 inline-block">
+                                        Special One-Time Offer
+                                    </span>
+                                )}
+                                <div className="flex items-baseline">
+                                    <span className="text-4xl font-black text-slate-900">{plan.price}</span>
+                                    <span className="text-slate-500 ml-1">{plan.period}</span>
+                                </div>
+                            </div>
 
                             <button
                                 onClick={() => handleSelectPlan(plan)}
-                                className={`w-full py-3 font-bold uppercase tracking-wider transition-all duration-300 ${plan.highlight
-                                    ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                                    : 'bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200'
-                                    } ${plan.isDiscounted ? 'bg-green-600 hover:bg-green-700 shadow-lg shadow-green-500/30' : ''}`}
+                                className={`w-full py-4 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all ${plan.popular
+                                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200'
+                                    : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
+                                    }`}
                             >
-                                Select Plan
+                                <span>Get Protection</span>
+                                <ArrowRight className="w-4 h-4" />
                             </button>
                         </div>
                     ))}
                 </div>
-            </section>
 
-            {/* What's Covered Section */}
-            <section className="py-16 px-6 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800">
-                <div className="max-w-7xl mx-auto">
-                    <h2 className="text-3xl font-black text-center mb-12 uppercase italic">
-                        What's <span className="text-orange-600">Considered Covered</span>?
-                    </h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {/* Mechanical */}
-                        <div className="p-6 bg-slate-50 dark:bg-black border border-gray-200 dark:border-zinc-800">
-                            <h3 className="text-lg font-bold mb-4 uppercase text-orange-600">Mechanical Failures</h3>
-                            <ul className="space-y-3 font-medium">
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> Shutter Mechanism ($400+ val)</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> Auto-Focus Motor ($650+ val)</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> Zoom/Focus Rings</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> Main Board Failure</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> Sensor Issues</li>
-                            </ul>
+                {/* FAQ Snippet */}
+                <div className="mt-20 border-t border-slate-200 pt-16">
+                    <h2 className="text-2xl font-bold text-center mb-12">Frequently Asked Questions</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                        <div>
+                            <h4 className="font-bold mb-2">When does coverage start?</h4>
+                            <p className="text-sm text-slate-600">Right now. We bridge your 7-day gift coverage directly into your selected plan so there's never a gap.</p>
                         </div>
-
-                        {/* Electronic/Display */}
-                        <div className="p-6 bg-slate-50 dark:bg-black border border-gray-200 dark:border-zinc-800">
-                            <h3 className="text-lg font-bold mb-4 uppercase text-orange-600">Electronic & Display</h3>
-                            <ul className="space-y-3 font-medium">
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> LCD Screen Failure</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> EVF (Viewfinder) Burn-out</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> Card Slot Reader pins</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> HDMI/USB Port issues</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> Unexpected Power failure</li>
-                            </ul>
-                        </div>
-
-                        {/* Policies */}
-                        <div className="p-6 bg-slate-50 dark:bg-black border border-gray-200 dark:border-zinc-800">
-                            <h3 className="text-lg font-bold mb-4 uppercase text-orange-600">Zero-Hassle Policy</h3>
-                            <ul className="space-y-3 font-medium">
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> No Deductibles ($0)</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> 100% Parts & Labour</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> Lemon Protection (3 strikes)</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> Fully Transferable</li>
-                                <li className="flex gap-2"><Check size={20} className="text-green-500 shrink-0" /> Global Coverage</li>
-                            </ul>
+                        <div>
+                            <h4 className="font-bold mb-2">What's the 'Anti-Lemon' guarantee?</h4>
+                            <p className="text-sm text-slate-600">If your gear requires 3 repairs for the same recurring issue, we simply replace it with a brand new one.</p>
                         </div>
                     </div>
-                    <p className="text-center text-gray-500 mt-12 text-sm max-w-2xl mx-auto">
-                        *Does not cover accidental damage (drops, spills, impact, water), lost or stolen items, or cosmetic damage that does not affect performance.
-                    </p>
                 </div>
-            </section>
-
+            </div>
         </div>
     );
 };

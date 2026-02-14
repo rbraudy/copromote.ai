@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchProfile = async (userId: string) => {
         try {
             // Native RLS will allow this once we enable policies
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('user_profiles')
                 .select('role, company_id')
                 .eq('user_id', userId)
