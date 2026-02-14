@@ -23,18 +23,8 @@
         "noFallthroughCasesInSwitch": true
     },
     "include": [
-        "src/main.tsx",
-        "src/App.tsx",
-        "src/vite-env.d.ts",
-        "src/lib/**/*",
-        "src/context/**/*",
-        "src/pages/**/*",
-        "src/components/Auth/**/*",
-        "src/components/Layout/**/*",
-        "src/components/UI/**/*",
-        "src/components/Sections/**/*",
-        "src/components/Dashboard/WarrantyDashboard.tsx",
-        "src/components/Dashboard/DemoCallModal.tsx",
-        "src/components/Dashboard/CallTranscriptModal.tsx"
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.d.ts"
     ]
 }
