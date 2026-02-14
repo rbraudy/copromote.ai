@@ -38,7 +38,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
         // UPDATED: Use 'SyncProducts' (PascalCase) to match the dashboard name
         const { data, error } = await supabase.functions.invoke('SyncProducts', {
             method: 'POST',
-            body: JSON.stringify({ products, user_id: user.uid }), // Pass user_id explicitly since we use Firebase Auth
+            body: JSON.stringify({ products, user_id: user.id }), // Pass user_id explicitly since we use Firebase Auth
         });
         if (error) {
             throw error;
@@ -56,7 +56,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
             const { data, error } = await supabase
                 .from('products')
                 .select('*')
-                .eq('user_id', user.uid)
+                .eq('user_id', user.id)
                 .order('createdAt', { ascending: false });
 
             if (error) {
@@ -161,7 +161,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
         if (!window.confirm('Are you sure you want to delete ALL products? This cannot be undone.')) return;
         setLoading(true);
         try {
-            const { error } = await supabase.from('products').delete().eq('user_id', user.uid);
+            const { error } = await supabase.from('products').delete().eq('user_id', user.id);
             if (error) throw error;
             setProducts([]);
             alert('Catalog cleared successfully.');
@@ -234,7 +234,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ user }) => {
                             const { error } = await supabase.from('products').insert({
                                 name: 'Test Product',
                                 createdAt: new Date().toISOString(),
-                                user_id: user.uid,
+                                user_id: user.id,
                             });
                             if (error) throw error;
                             alert('Connection Successful! Write verified.');

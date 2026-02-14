@@ -53,7 +53,7 @@ export const ProposalsList = ({ user }: ProposalsListProps) => {
                     )
 
                 `)
-                .eq('seller_id', user.uid)
+                .eq('seller_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;

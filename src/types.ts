@@ -1,5 +1,6 @@
 export interface User {
-    uid: string;
+    id: string;
+    uid?: string; // Keep as optional during transition
     email?: string | null;
     displayName?: string | null;
 }

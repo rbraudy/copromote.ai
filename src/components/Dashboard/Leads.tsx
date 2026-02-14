@@ -68,7 +68,7 @@ export const Leads = ({ user }: LeadsProps) => {
                     last_name: lastName,
                     email: email,
                     phone: phone,
-                    seller_id: user.uid,
+                    seller_id: user.id,
                     status: 'new'
                 }])
                 .select()
@@ -315,7 +315,7 @@ export const Leads = ({ user }: LeadsProps) => {
                     isOpen={isBundleModalOpen}
                     onClose={() => setIsBundleModalOpen(false)}
                     leadId={selectedLead.id}
-                    sellerId={user.uid}
+                    sellerId={user.id}
                     partnerName={selectedLead.company_name}
                 />
             )}

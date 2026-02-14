@@ -257,8 +257,8 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
                     const price3yr = parseCurrency(price3yrRaw) ?? 29900;
                     const purchaseAmount = parseCurrency(purchaseAmtRaw) ?? 0;
 
-                    let insertPayload: any = {
-                        seller_id: user.uid,
+                    const insertPayload: any = {
+                        seller_id: user.id,
                         company_id: null,
                         customer_name: name,
                         phone: cleanPhone,
