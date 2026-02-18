@@ -12,7 +12,9 @@ serve(async (req) => {
     }
 
     try {
-        const { background } = await req.json().catch(() => ({}))
+        let body = {};
+        try { body = await req.json(); } catch (e) { /* ignore empty body */ }
+        const { background } = body as any;
 
         // Core Logic Function
         const processBatch = async () => {
@@ -148,14 +150,18 @@ serve(async (req) => {
                 // 6. RECURSIVE TRIGGER (Fire and Forget)
                 if (products.length > 0) {
                     console.log('Triggering next batch (background)...')
-                    await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/enrichProducts`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY')}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ background: true })
-                    }).catch(err => console.error('Failed to trigger next batch:', err))
+                    try {
+                        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/enrichProducts`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY')}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ background: true })
+                        });
+                    } catch (err) {
+                        console.error('Failed to trigger next batch:', err);
+                    }
                 }
 
                 return { count: enrichedData.length, message: 'Success' }

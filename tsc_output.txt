@@ -1,3 +1,0 @@
-﻿src/components/Dashboard/WarrantyDashboard.tsx(2,47): error TS6133: 'Calendar' is declared but its value is never read.
-src/components/Dashboard/WarrantyDashboard.tsx(85,21): error TS6133: 'data' is declared but its value is never read.
-src/components/Layout/HenrysHeader.tsx(1,1): error TS6133: 'React' is declared but its value is never read.

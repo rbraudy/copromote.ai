@@ -24,12 +24,18 @@ interface ParsedRow {
 // --- Helper Functions ---
 const getValue = (row: any, ...aliases: string[]) => {
     const keys = Object.keys(row);
+
+    // 1. Try exact matches for all aliases first
     for (const alias of aliases) {
-        // Exact match first (case-insensitive keys)
         const exactKey = keys.find(k => k.toLowerCase() === alias.toLowerCase());
         if (exactKey && (row[exactKey] !== undefined && row[exactKey] !== null && row[exactKey] !== '')) return row[exactKey];
+    }
 
-        // Partial match
+    // 2. Try partial matches only if no exact match found
+    for (const alias of aliases) {
+        // Skip short generic aliases for partial matching to avoid false positives (like 'Name' matching 'First Name')
+        if (alias.length <= 4) continue;
+
         const keyPartial = keys.find(k => k.toLowerCase().includes(alias.toLowerCase()));
         if (keyPartial && (row[keyPartial] !== undefined && row[keyPartial] !== null && row[keyPartial] !== '')) return row[keyPartial];
     }
@@ -163,7 +169,36 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
         };
 
         const phoneVal = checkField('Phone', true, 'Phone', 'Mobile', 'Cell', 'Telephone', 'Tel', 'Contact Number');
-        checkField('Name', true, 'Customer Name', 'Name', 'Customer', 'Client', 'Contact', 'Bill To', 'Ship To');
+        const firstNameVal = getValue(firstRow, 'First Name', 'Given Name', 'Forename');
+        const lastNameVal = getValue(firstRow, 'Last Name', 'Surname', 'Family Name');
+        const fullNameVal = getValue(firstRow, 'Customer Name', 'Full Name', 'Name', 'Customer', 'Client', 'Contact', 'Bill To', 'Ship To');
+
+        // Logic check for names - is there enough to construct a name?
+        const hasEnoughName = fullNameVal || firstNameVal;
+        if (!hasEnoughName) {
+            report.critical.push("Missing Name information. Provide either 'Full Name' or 'First Name'.");
+        }
+
+        // Add to mapped display - reflect what we will capture
+        report.mapped.push({
+            label: 'First Name',
+            status: (firstNameVal || fullNameVal) ? 'ok' : 'missing',
+            value: firstNameVal ? String(firstNameVal).substring(0, 20) : (fullNameVal ? `${String(fullNameVal).split(' ')[0]} (extracted)` : undefined),
+            col: getColumnName(firstRow, 'First Name', 'Given Name', 'Forename') || (fullNameVal ? '(extracted)' : undefined)
+        });
+        report.mapped.push({
+            label: 'Last Name',
+            status: (lastNameVal || fullNameVal) ? 'ok' : 'missing',
+            value: lastNameVal ? String(lastNameVal).substring(0, 20) : (fullNameVal ? `${String(fullNameVal).split(' ').pop()} (extracted)` : undefined),
+            col: getColumnName(firstRow, 'Last Name', 'Surname', 'Family Name') || (fullNameVal ? '(extracted)' : undefined)
+        });
+        report.mapped.push({
+            label: 'Full Name',
+            status: (fullNameVal || firstNameVal) ? 'ok' : 'missing',
+            value: fullNameVal ? String(fullNameVal).substring(0, 20) : (firstNameVal && lastNameVal ? `${firstNameVal} ${lastNameVal}` : (firstNameVal ? String(firstNameVal) : undefined)),
+            col: getColumnName(firstRow, 'Customer Name', 'Full Name', 'Name', 'Customer', 'Client', 'Contact', 'Bill To', 'Ship To') || (hasEnoughName ? '(constructed)' : undefined)
+        });
+
         checkField('Product', true, 'Product Name', 'Product', 'Item', 'Description', 'Model', 'SKU');
 
         // Pricing Mappings
@@ -206,13 +241,42 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
                     // Ignore completely empty rows
                     if (Object.values(row).every(x => x === null || x === '')) continue;
 
-                    let name = getValue(row, 'Customer Name', 'Name', 'Customer', 'Client', 'Contact', 'Bill To', 'Ship To', 'Customer#', 'Owner');
-                    const lastName = getValue(row, 'Last Name', 'Surname', 'Family Name');
+                    const firstNameRaw = getValue(row, 'First Name', 'Given Name', 'Forename');
+                    const lastNameRaw = getValue(row, 'Last Name', 'Surname', 'Family Name');
+                    const fullNameRaw = getValue(row, 'Customer Name', 'Full Name', 'Name', 'Customer', 'Client', 'Contact', 'Bill To', 'Ship To', 'Customer#', 'Owner');
 
-                    if (name && lastName && !String(name).includes(' ')) {
-                        name = `${name} ${lastName}`;
+                    let finalFirstName = '';
+                    let finalLastName = '';
+                    let finalFullName = '';
+
+                    // Logic:
+                    // 1. Explicit First/Last columns are the highest source of truth for their fields.
+                    // 2. Full Name column is the source of truth for the composite unless First/Last are both provided.
+
+                    finalFirstName = String(firstNameRaw || '').trim();
+                    finalLastName = String(lastNameRaw || '').trim();
+                    finalFullName = String(fullNameRaw || '').trim();
+
+                    // If we have no full name, construct it
+                    if (!finalFullName && finalFirstName) {
+                        finalFullName = `${finalFirstName} ${finalLastName}`.trim();
                     }
-                    name = String(name || '').trim(); // Ensure string
+
+                    // If full name is just one word but we have a last name, it was likely a partial match or incomplete
+                    if (finalFullName && !finalFullName.includes(' ') && finalLastName) {
+                        finalFullName = `${finalFullName} ${finalLastName}`.trim();
+                    }
+
+                    // If we have a full name but no first/last, split it
+                    if (finalFullName && (!finalFirstName || !finalLastName)) {
+                        const parts = finalFullName.split(' ');
+                        if (!finalFirstName) finalFirstName = parts[0];
+                        if (!finalLastName) finalLastName = parts.length > 1 ? parts[parts.length - 1] : '';
+                    }
+
+                    if (!finalFullName || !finalFirstName) {
+                        // Safety check
+                    }
 
                     const phone = getValue(row, 'Phone', 'Mobile', 'Cell', 'Telephone', 'Tel', 'Contact Number');
                     const product = String(getValue(row, 'Product Name', 'Product', 'Item', 'Description', 'Model', 'SKU', 'Material') || '').trim();
@@ -234,9 +298,9 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
                     const expiryDate = new Date(purchaseDate);
                     expiryDate.setDate(expiryDate.getDate() + 30);
 
-                    if (!name || !phone || !product) {
+                    if (!finalFullName || !phone || !product) {
                         const missing = [];
-                        if (!name) missing.push('Name');
+                        if (!finalFullName) missing.push('Name');
                         if (!phone) missing.push('Phone');
                         if (!product) missing.push('Product');
 
@@ -260,7 +324,9 @@ export const ImportProspectsModal: React.FC<ImportProspectsModalProps> = ({ isOp
                     const insertPayload: any = {
                         seller_id: user.id,
                         company_id: null,
-                        customer_name: name,
+                        customer_name: finalFullName,
+                        customer_first_name: finalFirstName,
+                        customer_last_name: finalLastName,
                         phone: cleanPhone,
                         product_name: product,
                         email: email,

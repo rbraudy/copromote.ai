@@ -9,7 +9,8 @@ const corsHeaders = {
     'Access-Control-Max-Age': '86400',
 }
 
-serve(async (req) => {
+// @ts-ignore
+serve(async (req: any) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -23,6 +24,7 @@ serve(async (req) => {
         const typeObj = type || message?.type || body.type;
         const actualToolCalls = toolCalls || message?.toolCalls || callObj?.toolCalls;
 
+        // @ts-ignore
         const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
         // Helper: Get Integrations
@@ -59,13 +61,17 @@ serve(async (req) => {
                         from = twilioConfig.phoneNumber;
                     } else {
                         // 2. Fallback to Env Vars (Henry's Legacy)
+                        // @ts-ignore
                         sid = Deno.env.get('TWILIO_ACCOUNT_SID');
+                        // @ts-ignore
                         token = Deno.env.get('TWILIO_AUTH_TOKEN');
+                        // @ts-ignore
                         from = Deno.env.get('TWILIO_PHONE_NUMBER');
 
                         // Canadian Number Logic for Fallback
                         const caCodes = ['204', '226', '236', '249', '250', '289', '306', '343', '365', '403', '416', '418', '431', '437', '438', '450', '506', '514', '519', '548', '579', '581', '587', '604', '613', '639', '647', '672', '705', '709', '778', '780', '782', '807', '819', '825', '867', '873', '902', '905'];
                         if (phoneNumber && phoneNumber.startsWith('+1') && caCodes.includes(phoneNumber.substring(2, 5))) {
+                            // @ts-ignore
                             const ca = Deno.env.get('TWILIO_PHONE_NUMBER_CA');
                             if (ca) from = ca;
                         }
@@ -102,9 +108,11 @@ serve(async (req) => {
 
                     // Reuse existing report-issue function (which should eventually be generic too)
                     try {
+                        // @ts-ignore
                         const reportRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/report-issue`, {
                             method: 'POST',
                             headers: {
+                                // @ts-ignore
                                 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, // Use Service Role to bypass RLS for internal call
                                 'Content-Type': 'application/json'
                             },
@@ -123,6 +131,7 @@ serve(async (req) => {
 
                     // --- TOOL: offerDiscount ---
                 } else if (tc.function?.name === 'offerDiscount') {
+                    // @ts-ignore
                     const args = typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : tc.function.arguments;
                     const newPrice = args.newPrice;
                     const sessionId = callObj?.metadata?.prospectId || message?.metadata?.prospectId; // Using Prospect ID as Session ID for simplicity?

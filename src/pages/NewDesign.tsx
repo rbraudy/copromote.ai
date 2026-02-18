@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
     ArrowRight, TrendingUp, Users,
-    BarChart3, Upload, Play, CheckCircle2,
+    BarChart3,
     Zap, BrainCircuit, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,6 +10,10 @@ import SignInModal from '../components/Auth/SignInModal';
 // import SignUpModal from '../components/Auth/SignUpModal'; // Keeping for reference
 import WarrantySignUpModal from '../components/Auth/WarrantySignUpModal';
 import { DemoCallModal } from '../components/Dashboard/DemoCallModal';
+import { CampaignBuilder } from '../components/Dashboard/Admin/CampaignBuilder';
+import { LiveQueue } from '../components/Dashboard/Admin/LiveQueue';
+import { AdminAnalytics } from '../components/Dashboard/Admin/AdminAnalytics';
+import { CompanySwitcher } from '../components/Dashboard/Admin/CompanySwitcher';
 
 const NewDesign = () => {
     const [activeTab, setActiveTab] = useState('campaign');
@@ -132,102 +136,69 @@ const NewDesign = () => {
                     <div className="max-w-3xl mb-16">
                         <h2 className="text-4xl font-bold mb-6 italic tracking-tight uppercase">Campaign Management</h2>
                         <p className="text-slate-400 text-lg">
-                            Empower your administrators to launch global warranty sales campaigns in minutes. Upload, trigger, and scale with ease.
+                            Empower your administrators to launch global warranty sales campaigns in minutes.
                         </p>
                     </div>
 
                     <div className="bg-slate-900/50 border border-white/10 rounded-[40px] p-8 md:p-12 backdrop-blur-xl shadow-2xl">
-                        <div className="grid md:grid-cols-2 gap-12 items-center">
-                            <div>
-                                <div className="flex gap-4 mb-8 p-1 bg-slate-800/50 rounded-2xl w-fit">
-                                    <button
-                                        onClick={() => setActiveTab('campaign')}
-                                        className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'campaign' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                                    >
-                                        Builder
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('queue')}
-                                        className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'queue' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                                    >
-                                        Live Queue
-                                    </button>
-                                </div>
 
-                                <div className="space-y-6">
-                                    <div className="p-6 rounded-3xl bg-white/5 border border-white/5 flex items-start gap-4">
-                                        <div className="p-3 bg-blue-500/10 rounded-xl">
-                                            <Upload className="w-5 h-5 text-blue-400" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold mb-1">Batch Lead Upload</h4>
-                                            <p className="text-sm text-slate-400">Import CSV or Excel files with customer purchase history and device data.</p>
-                                        </div>
-                                    </div>
-                                    <div className="p-6 rounded-3xl bg-white/5 border border-white/5 flex items-start gap-4">
-                                        <div className="p-3 bg-indigo-500/10 rounded-xl">
-                                            <Play className="w-5 h-5 text-indigo-400" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold mb-1">Instant Execution</h4>
-                                            <p className="text-sm text-slate-400">Trigger thousands of personalized sales calls with a single click.</p>
-                                        </div>
-                                    </div>
-                                    <div className="p-6 rounded-3xl bg-white/5 border border-white/5 flex items-start gap-4">
-                                        <div className="p-3 bg-emerald-500/10 rounded-xl">
-                                            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold mb-1">Rule-Based Automation</h4>
-                                            <p className="text-sm text-slate-400">Set criteria for automatic follow-ups and SMS confirmations.</p>
-                                        </div>
-                                    </div>
-                                </div>
+                        {/* Tab Navigation */}
+                        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+                            <div className="flex flex-wrap gap-4 p-1 bg-slate-800/50 rounded-2xl w-fit">
+                                <button
+                                    onClick={() => setActiveTab('campaign')}
+                                    className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'campaign' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Builder
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('queue')}
+                                    className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'queue' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Live Queue
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('analytics')}
+                                    className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'analytics' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Analytics
+                                </button>
                             </div>
-
-                            <div className="relative group">
-                                {/* Mockup UI Interface */}
-                                <div className="bg-slate-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative aspect-square md:aspect-auto md:h-[500px]">
-                                    <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                                        <div className="flex gap-2">
-                                            <div className="w-3 h-3 rounded-full bg-red-500/50" />
-                                            <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
-                                            <div className="w-3 h-3 rounded-full bg-green-500/50" />
-                                        </div>
-                                        <span className="text-xs text-slate-500 font-mono tracking-widest uppercase">Admin Dashboard v2.0</span>
-                                    </div>
-                                    <div className="p-8 space-y-8">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h5 className="text-xl font-bold">New Campaign</h5>
-                                                <p className="text-xs text-slate-500">Launch a new agent sprint</p>
-                                            </div>
-                                            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
-                                                <ArrowRight className="text-white w-6 h-6" />
-                                            </div>
-                                        </div>
-
-                                        <div className="border-2 border-dashed border-white/10 rounded-3xl p-10 flex flex-col items-center justify-center opacity-50 cursor-not-allowed">
-                                            <Upload className="w-10 h-10 text-slate-600 mb-4" />
-                                            <p className="text-sm text-slate-500">Batch Upload Interface (Admin Only)</p>
-                                        </div>
-
-                                        <div className="space-y-3">
-                                            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                                                <div className="h-full bg-blue-600 w-2/3 animate-pulse" />
-                                            </div>
-                                            <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                                                <span>PROCESSING 6,420 LEADS...</span>
-                                                <span>67%</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <CompanySwitcher />
                         </div>
+
+                        {/* Content Area */}
+                        <div className="min-h-[500px] relative">
+                            {!user && (
+                                <div className="absolute -top-12 right-0 bg-blue-600/20 border border-blue-500/30 text-blue-200 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                                    Interactive Demo Mode
+                                </div>
+                            )}
+
+                            {activeTab === 'campaign' && <CampaignBuilder demoMode={!user} />}
+                            {activeTab === 'queue' && <LiveQueue demoMode={!user} />}
+                            {activeTab === 'analytics' && <AdminAnalytics demoMode={!user} />}
+
+                            {!user && (
+                                <div className="mt-8 p-4 bg-slate-900/80 border border-slate-800 rounded-xl flex items-center justify-between backdrop-blur-sm">
+                                    <div className="text-sm text-slate-400">
+                                        You are viewing example data. Sign in to connect your own AI agents.
+                                    </div>
+                                    <button
+                                        onClick={() => setIsSignInOpen(true)}
+                                        className="px-4 py-2 bg-white text-slate-900 text-sm font-bold rounded-lg hover:bg-slate-200 transition-colors"
+                                    >
+                                        Sign In
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                     </div>
                 </div>
             </section>
+
 
             {/* Analytics Placeholder Section */}
             <section id="analytics" className="py-24 border-t border-white/5">

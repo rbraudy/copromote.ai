@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, PhoneCall, Loader2, FileText, AlertCircle, PlayCircle, Upload, LayoutDashboard, BarChart3, TrendingUp, CheckCircle, Trash2 } from 'lucide-react';
+import { Clock, PhoneCall, Loader2, FileText, AlertCircle, PlayCircle, Upload, LayoutDashboard, BarChart3, TrendingUp, CheckCircle, Trash2, Megaphone } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { CallTranscriptModal } from './CallTranscriptModal';
 import { DemoCallModal } from './DemoCallModal';
 import { ImportProspectsModal } from './ImportProspectsModal';
+import { CampaignBuilder } from './Admin/CampaignBuilder'; // Import CampaignBuilder
 import { Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { EditProspectModal } from './EditProspectModal';
+import { CompanySwitcher } from './Admin/CompanySwitcher';
 
 const getStatusColor = (status: string) => {
     switch (status) {
@@ -22,6 +25,8 @@ const COLORS = ['#10B981', '#F59E0B', '#EF4444', '#6366F1']; // Sale, Voicemail/
 interface Prospect {
     id: string;
     customer_name: string;
+    customer_first_name?: string;
+    customer_last_name?: string;
     phone: string;
     product_name: string;
     purchase_date: string;
@@ -38,7 +43,7 @@ interface Prospect {
 }
 
 export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
-    const [activeTab, setActiveTab] = useState<'prospects' | 'analytics'>('prospects');
+    const [activeTab, setActiveTab] = useState<'prospects' | 'analytics' | 'campaign'>('prospects');
     const [prospects, setProspects] = useState<Prospect[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [callingId, setCallingId] = useState<string | null>(null);
@@ -46,6 +51,8 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
     const [isDemoOpen, setIsDemoOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
     const [selectedProspectId, setSelectedProspectId] = useState<string | null>(null);
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [editingProspect, setEditingProspect] = useState<any | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     // Analytics Data
@@ -245,7 +252,19 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
                         <BarChart3 size={16} />
                         Analytics
                     </button>
+                    <button
+                        onClick={() => setActiveTab('campaign')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'campaign'
+                            ? 'bg-blue-600 text-white shadow-lg'
+                            : 'text-slate-400 hover:text-white'
+                            }`}
+                    >
+                        <Megaphone size={16} />
+                        Campaigns
+                    </button>
                 </div>
+
+                <CompanySwitcher />
 
                 <div className="flex items-center gap-3">
                     {/* Buttons moved to header but can stay here or be context sensitive. Keeping them simple. */}
@@ -279,7 +298,13 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
                 </div>
             </div>
 
-            {activeTab === 'analytics' ? (
+            {activeTab === 'campaign' && (
+                <div className="animate-in fade-in duration-500">
+                    <CampaignBuilder demoMode={false} />
+                </div>
+            )}
+
+            {activeTab === 'analytics' && (
                 <div className="space-y-6 animate-in fade-in duration-500">
                     {/* KPI Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -366,7 +391,9 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
                         </div>
                     </div>
                 </div>
-            ) : (
+            )}
+
+            {activeTab === 'prospects' && (
                 <>
                     <ImportProspectsModal
                         isOpen={isImportOpen}
@@ -461,6 +488,16 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
                                             <td className="px-4 py-4 text-right sticky right-0 bg-slate-900 border-l border-slate-800 shadow-[-10px_0_20px_-5px_rgba(0,0,0,0.5)]">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
+                                                        onClick={() => {
+                                                            setEditingProspect(prospect);
+                                                            setIsEditOpen(true);
+                                                        }}
+                                                        className="p-2 text-slate-500 hover:text-blue-400 hover:bg-slate-800 rounded-lg transition-all"
+                                                        title="Quick Edit"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
+                                                    </button>
+                                                    <button
                                                         onClick={async () => {
                                                             if (confirm('Are you sure you want to delete this prospect?')) {
                                                                 const { error } = await supabase.from('warranty_prospects').delete().eq('id', prospect.id);
@@ -526,6 +563,18 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
                     <DemoCallModal
                         isOpen={isDemoOpen}
                         onClose={() => setIsDemoOpen(false)}
+                    />
+
+                    <EditProspectModal
+                        isOpen={isEditOpen}
+                        onClose={() => {
+                            setIsEditOpen(false);
+                            setEditingProspect(null);
+                        }}
+                        onSuccess={() => {
+                            fetchProspects();
+                        }}
+                        prospect={editingProspect}
                     />
                 </>
             )}

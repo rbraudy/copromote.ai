@@ -7,6 +7,8 @@ interface AuthContextType {
     session: Session | null;
     role: string | null;
     companyId: string | null;
+    isSuperAdmin: boolean;
+    setImpersonatedCompanyId: (id: string | null) => void;
     loading: boolean;
     signOut: () => Promise<void>;
 }
@@ -16,6 +18,8 @@ const AuthContext = createContext<AuthContextType>({
     session: null,
     role: null,
     companyId: null,
+    isSuperAdmin: false,
+    setImpersonatedCompanyId: () => { },
     loading: true,
     signOut: async () => { },
 });
@@ -27,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [session, setSession] = useState<Session | null>(null);
     const [role, setRole] = useState<string | null>(null);
     const [companyId, setCompanyId] = useState<string | null>(null);
+    const [impersonatedCompanyId, setImpersonatedCompanyId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -80,8 +85,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // State updates handled by onAuthStateChange
     };
 
+    const isSuperAdmin = role === 'superadmin' || user?.email === 'rbraudy@gmail.com';
+    const effectiveCompanyId = (isSuperAdmin && impersonatedCompanyId) ? impersonatedCompanyId : companyId;
+
     return (
-        <AuthContext.Provider value={{ user, session, role, companyId, loading, signOut }}>
+        <AuthContext.Provider value={{
+            user,
+            session,
+            role,
+            companyId: effectiveCompanyId,
+            isSuperAdmin,
+            setImpersonatedCompanyId,
+            loading,
+            signOut
+        }}>
             {children}
         </AuthContext.Provider>
     );

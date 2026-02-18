@@ -20,21 +20,28 @@ export const useDiscount = (sessionId: string | null) => {
         if (!sessionId) return;
 
         const fetchDiscount = async () => {
-            // SECURITY FIX: Use RPC function instead of direct SELECT to prevent public table access
-            const { data, error } = await supabase
-                .rpc('get_public_prospect', { p_id: sessionId })
-                .single<PublicProspect>(); // Helper generic for RPC result
-
-            if (error) {
-                console.error('Error fetching discount:', error);
+            console.log('useDiscount: Fetching for Session ID:', sessionId);
+            // Verify if ID is a valid UUID to prevent RPC crash
+            if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+                console.error('useDiscount: Invalid UUID format');
                 return;
             }
 
+            const { data, error } = await supabase
+                .rpc('get_public_prospect', { p_id: sessionId })
+                .single<PublicProspect>();
+
+            if (error) {
+                console.error('useDiscount: RPC Error:', error);
+                return;
+            }
+
+            console.log('useDiscount: Result Data:', data);
+
             if (data) {
-                // Parse cents to dollars (keep precise for display)
                 const formatPrice = (cents: number | null) => {
                     if (cents === null || cents === undefined) return undefined;
-                    return (cents / 100).toFixed(2); // e.g. "139.99"
+                    return (cents / 100).toFixed(2);
                 };
 
                 setBasePrice2yr(formatPrice(data.warranty_price_2yr));
@@ -44,7 +51,6 @@ export const useDiscount = (sessionId: string | null) => {
                     const expiry = data.discount_expiry ? new Date(data.discount_expiry) : null;
                     const now = new Date();
 
-                    // Check if discount is still valid
                     if (!expiry || expiry > now) {
                         setIsDiscounted(true);
                         setPrice(formatPrice(data.discount_price));
@@ -55,9 +61,8 @@ export const useDiscount = (sessionId: string | null) => {
 
         fetchDiscount();
 
-        // Optional: Real-time subscription to catch the discount update immediately during the call
         const channel = supabase
-            .channel('schema-db-changes')
+            .channel(`discount-${sessionId}`)
             .on(
                 'postgres_changes',
                 {
@@ -67,7 +72,7 @@ export const useDiscount = (sessionId: string | null) => {
                     filter: `id=eq.${sessionId}`,
                 },
                 (payload) => {
-                    const newData = payload.new;
+                    const newData = payload.new as PublicProspect;
                     if (newData.offer_discount_triggered && newData.discount_price) {
                         const expiry = newData.discount_expiry ? new Date(newData.discount_expiry) : null;
                         const now = new Date();
@@ -83,7 +88,6 @@ export const useDiscount = (sessionId: string | null) => {
         return () => {
             supabase.removeChannel(channel);
         };
-
     }, [sessionId]);
 
     return { price, isDiscounted, basePrice2yr, basePrice3yr };

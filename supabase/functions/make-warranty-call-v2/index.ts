@@ -8,6 +8,9 @@ const corsHeaders = {
     'Access-Control-Max-Age': '86400',
 }
 
+const TEST_CALL_LIMIT = 20;
+const SUPERADMIN_EMAIL = 'rbraudy@gmail.com';
+
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
@@ -15,81 +18,63 @@ serve(async (req) => {
 
     try {
         const body = await req.json();
-        console.log('Incoming Generic Request Body:', JSON.stringify(body));
+        const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+        // 0. Auth Check
+        const authHeader = req.headers.get('Authorization');
+        let userEmail = '';
+        if (authHeader) {
+            const client = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+                global: { headers: { Authorization: authHeader } }
+            });
+            const { data: { user } } = await client.auth.getUser();
+            userEmail = user?.email || '';
+        }
 
         const phoneInput = (body.phone || body.phoneNumber || "").toString().trim();
         const pid = body.prospectId;
 
-        // Validation
         if (!phoneInput) throw new Error('Request missing phone number');
 
-        // Init Supabase
-        const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-
-        // 1. Phone Number Normalization (E.164)
-        console.log(`Original phone input: "${phoneInput}"`);
+        // 1. Phone Number Normalization
         let tel = phoneInput.replace(/[^\d+]/g, '');
         if (tel.startsWith('+')) {
             tel = '+' + tel.substring(1).replace(/\+/g, '');
         } else {
             tel = '+' + (tel.length === 10 ? '1' : '') + tel;
         }
-        if (!/^\+[1-9]\d{1,14}$/.test(tel)) {
-            throw new Error(`Invalid phone number format. Normalized to: ${tel}`);
-        }
-        console.log(`Normalized Phone: "${tel}"`);
 
-        // 2. Fetch Prospect & Company Data
-        let prospect = null;
-        let companyId = null;
-        let template = null;
-
+        // 2. Fetch Context
+        let companyId = body.companyId;
         if (pid) {
-            console.log(`Fetching prospect: ${pid}`);
-            const { data: pData, error: pError } = await sb.from('warranty_prospects')
-                .select('*, companies(*)') // Join with companies table if needed, or just get company_id
-                .eq('id', pid)
-                .single();
-
-            if (pError || !pData) {
-                console.error('Prospect fetch error:', pError);
-                // Fallback mechanism could go here, but for now we error if PID provided but not found
-            } else {
-                prospect = pData;
-                companyId = prospect.company_id;
-            }
-        }
-
-        // 2b. Fallback: Lookup Henry's if no prospect/company (Legacy Support / Direct Call)
-        if (!companyId) {
-            console.warn('No Company ID resolved. Falling back to key lookup or default (Henry\'s).');
-            // Check if company_id provided in body
-            if (body.companyId) {
-                companyId = body.companyId;
-            } else {
-                // LAST RESORT: Look for "Henry's" to keep existing demos working
-                const { data: hData } = await sb.from('companies').select('id').eq('name', 'Henry\'s').single();
-                if (hData) companyId = hData.id;
-            }
+            const { data: pData } = await sb.from('warranty_prospects').select('company_id').eq('id', pid).single();
+            if (pData) companyId = pData.company_id;
         }
 
         if (!companyId) {
-            throw new Error('Could not resolve Company Context. Cannot load template.');
+            const { data: hData } = await sb.from('companies').select('id').eq('name', 'Henry\'s').single();
+            companyId = hData?.id;
         }
 
-        // 3. Load Call Template
-        console.log(`Loading Template for Company ID: ${companyId}`);
-        const { data: tmpl, error: tError } = await sb.from('call_templates')
-            .select('*')
-            .eq('company_id', companyId)
-            .single();
+        if (!companyId) throw new Error('Could not resolve Company Context.');
 
-        if (tError || !tmpl) {
-            throw new Error(`No call template found for company ${companyId}.`);
+        // 3. ENFORCE TEST LIMITS
+        const { data: config } = await sb.from('campaign_configs').select('*').eq('company_id', companyId).single();
+        const isSuperAdmin = userEmail === SUPERADMIN_EMAIL;
+
+        if (config && !config.is_live && !isSuperAdmin) {
+            if (config.test_calls_count >= TEST_CALL_LIMIT) {
+                throw new Error(`Test call limit reached (${TEST_CALL_LIMIT}). Please contact support to go live.`);
+            }
         }
-        template = tmpl;
 
-        // 4. Prepare Variables for Injection
+        // 4. Load Call Template
+        const { data: template, error: tError } = await sb.from('call_templates').select('*').eq('company_id', companyId).single();
+        if (tError || !template) throw new Error(`No call template found for company ${companyId}.`);
+
+        // 5. Prepare Variables
+        const { data: prospect } = pid ? await sb.from('warranty_prospects').select('*, customer_first_name').eq('id', pid).single() : { data: null };
+
         const purchaseAmount = prospect?.purchase_amount ? Math.round(prospect.purchase_amount / 100) : 1990;
         const price2yr = prospect?.warranty_price_2yr ? Math.round(prospect.warranty_price_2yr / 100) : 199;
         const price3yr = prospect?.warranty_price_3yr ? Math.round(prospect.warranty_price_3yr / 100) : 299;
@@ -98,29 +83,28 @@ serve(async (req) => {
 
         const variables: Record<string, string> = {
             agent_name: body.agentName || 'Claire',
-            customer_name: prospect?.first_name || body.customerName || body.firstName || 'there',
-            product_name: prospect?.product || body.productName || 'your recent purchase',
+            customer_name: prospect?.customer_first_name || prospect?.customer_name?.split(' ')[0] || body.customerName?.split(' ')[0] || 'there',
+            full_customer_name: prospect?.customer_name || body.customerName || 'there',
+            product_name: prospect?.product_name || body.productName || 'your recent purchase',
             phone_number: tel,
             product_value: purchaseAmount.toString(),
             warranty_price_2yr: price2yr.toString(),
             warranty_price_3yr: price3yr.toString(),
             warranty_price_monthly: monthlyPrice.toString(),
             discount_price: discountPrice.toString(),
-            link: (pid) ? (Deno.env.get('SUPABASE_URL') + '/functions/v1/track-warranty-link?prospectId=' + pid) : 'https://www.henrys.com'
+            link: pid ? `${Deno.env.get('SUPABASE_URL')}/functions/v1/track-warranty-link?prospectId=${pid}` : 'https://www.henrys.com'
         };
 
-        // 5. Inject Variables into Prompt & First Message
         let systemPrompt = template.system_prompt;
-        let firstMessage = template.first_message;
+        let firstMessage = template.first_message || "Hi, is {{customer_name}} there?";
 
         for (const [key, value] of Object.entries(variables)) {
             const regex = new RegExp(`{{${key}}}`, 'g');
             systemPrompt = systemPrompt.replace(regex, value);
-            firstMessage = firstMessage ? firstMessage.replace(regex, value) : "";
+            firstMessage = firstMessage.replace(regex, value);
         }
 
-        // 6. Resolve Phone Provider Config (Vapi Credentials)
-        // Check for Custom Provider Config in 'integrations'? For now we use env vars + override logic
+        // 6. Vapi Config
         const caCodes = ['204', '226', '236', '249', '250', '289', '306', '343', '365', '403', '416', '418', '431', '437', '438', '450', '506', '514', '519', '548', '579', '581', '587', '604', '613', '639', '647', '672', '705', '709', '778', '780', '782', '807', '819', '825', '867', '873', '902', '905'];
         let phoneId = Deno.env.get('VAPI_PHONE_NUMBER_ID');
         if (tel.startsWith('+1') && caCodes.includes(tel.substring(2, 5))) {
@@ -128,10 +112,6 @@ serve(async (req) => {
             if (ca) phoneId = ca;
         }
 
-        if (!phoneId) throw new Error('Vapi Configuration Error: missing Phone Number ID');
-        const privateKey = Deno.env.get('VAPI_PRIVATE_KEY');
-
-        // 7. Build Vapi Payload
         const payload = {
             phoneNumberId: phoneId,
             customer: { number: tel, name: variables.customer_name },
@@ -140,55 +120,27 @@ serve(async (req) => {
                     provider: "openai",
                     model: "gpt-4o",
                     messages: [{ role: "system", content: systemPrompt }],
-                    maxTokens: 350,
+                    temperature: 0.1,
                     functions: [
-                        // Define standard tools here. Ideally these should verify against integrations table
-                        {
-                            name: "sendSms",
-                            description: "Send text",
-                            parameters: {
-                                type: "object",
-                                properties: {
-                                    phoneNumber: { type: "string" },
-                                    message: { type: "string" }
-                                },
-                                required: ["phoneNumber", "message"]
-                            }
-                        },
-                        {
-                            name: "reportIssue",
-                            description: "Report a customer support issue.",
-                            parameters: {
-                                type: "object",
-                                properties: {
-                                    issueType: { type: "string", enum: ["not_received", "damaged", "wrong_item", "returned", "waiting_for_delivery", "other"] },
-                                    description: { type: "string" },
-                                    sentiment: { type: "string" }
-                                },
-                                required: ["issueType", "description"]
-                            }
-                        },
-                        {
-                            name: "offerDiscount",
-                            description: "Apply a special discount.",
-                            parameters: {
-                                type: "object",
-                                properties: { newPrice: { type: "number" } },
-                                required: ["newPrice"]
-                            }
-                        }
+                        { name: "sendSms", description: "Send text", parameters: { type: "object", properties: { phoneNumber: { type: "string" }, message: { type: "string" } }, required: ["phoneNumber", "message"] } },
+                        { name: "reportIssue", description: "Report issue", parameters: { type: "object", properties: { issueType: { type: "string", enum: ["not_received", "damaged", "wrong_item", "returned", "waiting_for_delivery", "other"] }, description: { type: "string" } }, required: ["issueType", "description"] } }
                     ]
-                    // We could filter functions based on template.tools_config later
                 },
                 voice: {
                     provider: "11labs",
-                    voiceId: template.voice_id || "jBzLvP03992lMFEkj2kJ", // Default Paige
-                    startAt: 0,
+                    voiceId: template.voice_id || "jBzLvP03992lMFEkj2kJ",
                     model: "eleven_turbo_v2_5",
-                    stability: 0.5,
-                    similarityBoost: 0.75,
+                    stability: 0.35,
+                    similarityBoost: 0.65,
+                    style: 0.45,
+                    speed: 1.0
                 },
-                transcriber: { provider: "deepgram", model: "nova-2", language: "en" },
+                transcriber: {
+                    provider: "deepgram",
+                    model: "nova-2",
+                    language: "en",
+                    endpointing: 200
+                },
                 serverUrl: 'https://tikocqefwifjcfhgqdyj.supabase.co/functions/v1/handle-call-webhook-v2',
                 firstMessageMode: "assistant-waits-for-user",
                 firstMessage: firstMessage,
@@ -197,42 +149,36 @@ serve(async (req) => {
             metadata: { prospectId: pid, companyId: companyId }
         };
 
-        // 8. Execute Call
-        console.log('Sending to Vapi:', JSON.stringify(payload.assistant.firstMessage));
-
+        // 7. Execute Call
         const vapiRes = await fetch('https://api.vapi.ai/call/phone', {
             method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + privateKey, 'Content-Type': 'application/json' },
+            headers: { 'Authorization': `Bearer ${Deno.env.get('VAPI_PRIVATE_KEY')}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
-        if (!vapiRes.ok) {
-            throw new Error(`Vapi API Error: ${await vapiRes.text()}`);
+        if (!vapiRes.ok) throw new Error(`Vapi Error: ${await vapiRes.text()}`);
+        const vapiData = await vapiRes.json();
+
+        // 8. Increment Counter & Log
+        if (!isSuperAdmin) {
+            await sb.from('campaign_configs').update({ test_calls_count: (config?.test_calls_count || 0) + 1 }).eq('company_id', companyId);
         }
 
-        const vapiData = await vapiRes.json();
-        console.log('Vapi Call Initiated:', vapiData.id);
-
-        // 9. Log to DB
         if (pid) {
-            await sb.rpc('increment_call_attempts', { prospect_id: pid }).catch(e => console.error('RPC Error:', e));
+            await sb.rpc('increment_call_attempts', { prospect_id: pid });
             await sb.from('call_logs').insert({
                 warranty_prospect_id: pid,
                 provider_call_id: vapiData.id,
                 connection_status: 'SUCCESS',
-                communication_sent: 'Initiated AI call (Generic Engine)'
-            }).catch(e => console.error('Log Error:', e));
+                communication_sent: 'Initiated Level 3 AI Call'
+            });
         }
 
-        return new Response(JSON.stringify({ success: true, id: vapiData.id }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return new Response(JSON.stringify({ success: true, id: vapiData.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     } catch (e: any) {
-        console.error('Generic Engine Error:', e);
-        return new Response(JSON.stringify({ success: false, error: e.message }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200 // Return 200 so UI can handle error gracefully
-        });
+        console.error('Error:', e);
+        return new Response(JSON.stringify({ success: false, error: e.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 })
+
