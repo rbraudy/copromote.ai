@@ -60,9 +60,10 @@ const Header: React.FC<HeaderProps> = ({ onSignInClick, onSignUpClick }) => {
                             )}
                             <button
                                 onClick={handleSignOut}
-                                className="text-sm text-slate-500 hover:text-white transition-colors flex items-center gap-1"
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all border border-transparent hover:border-red-200 dark:hover:border-red-900/30"
                             >
                                 <LogOut size={16} />
+                                <span>Logout</span>
                             </button>
                         </div>
                     ) : (

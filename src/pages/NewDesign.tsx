@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
     ArrowRight, TrendingUp, Users,
     BarChart3,
-    Zap, BrainCircuit, MessageSquare
+    Zap, BrainCircuit, MessageSquare, Loader2
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Layout/Header';
@@ -18,11 +18,22 @@ import { CompanySwitcher } from '../components/Dashboard/Admin/CompanySwitcher';
 const NewDesign = () => {
     const [activeTab, setActiveTab] = useState('campaign');
     // user and signOut are now managed by useAuth
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     // Restoring local state for Modals
     const [isSignInOpen, setIsSignInOpen] = useState(false);
     const [isSignUpOpen, setIsSignUpOpen] = useState(false);
     const [isDemoOpen, setIsDemoOpen] = useState(false);
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="text-center">
+                    <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+                    <p className="text-slate-400 font-medium">Securing session...</p>
+                </div>
+            </div>
+        );
+    }
 
     const handleViewDemo = () => {
         if (user) {

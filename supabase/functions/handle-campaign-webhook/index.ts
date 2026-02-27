@@ -9,6 +9,22 @@ const corsHeaders = {
     'Access-Control-Max-Age': '86400',
 }
 
+// Advanced Debug Logger
+const logDebug = async (sb: any, functionName: string, errorType: string, payload: any, rawResponse?: string, error?: any) => {
+    try {
+        await sb.from('system_debug_logs').insert({
+            function_name: functionName,
+            error_type: errorType,
+            payload: payload,
+            raw_response: rawResponse,
+            stack_trace: error?.stack || error?.message,
+            metadata: { timestamp: new Date().toISOString() }
+        });
+    } catch (e) {
+        console.error('CRITICAL: Debug Logger Failed:', e);
+    }
+};
+
 // @ts-ignore
 serve(async (req: any) => {
     if (req.method === 'OPTIONS') {
@@ -49,7 +65,11 @@ serve(async (req: any) => {
                 if (tc.function?.name === 'sendSms') {
                     let args;
                     try { args = typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : tc.function.arguments; } catch (e) { args = {}; }
-                    const { phoneNumber, message: smsMessage } = args;
+                    const phoneNumber = args.phoneNumber || args.number || args.recipient || args.to || args.phone;
+                    const smsMessage = args.message || args.body || args.content || args.text || args.smsMessage;
+
+                    console.log(`[SMS_DEBUG] Attempting to send to: ${phoneNumber} | Params: ${JSON.stringify(args)}`);
+                    await logDebug(sb, 'handle-campaign-webhook', 'SMS_Tool_Payload', { phoneNumber, smsMessage, fullArgs: args });
 
                     // 1. Try DB Integration first
                     let sid, token, from;
@@ -92,7 +112,8 @@ serve(async (req: any) => {
                         if (twRes.ok) {
                             results.push({ toolCallId: tc.id, result: "SMS sent successfully" });
                         } else {
-                            results.push({ toolCallId: tc.id, error: "Twilio Error: " + await twRes.text() });
+                            await logDebug(sb, 'handle-campaign-webhook', 'Twilio_Error', { phoneNumber, from, sid }, await twRes.text());
+                            results.push({ toolCallId: tc.id, error: "Twilio Error: failed" });
                         }
                     } else {
                         results.push({ toolCallId: tc.id, error: "Missing Twilio credentials (DB or Env)" });
@@ -173,12 +194,18 @@ serve(async (req: any) => {
                     outcome: outcome,
                     cost: callObj?.cost || 0
                 }).eq('provider_call_id', providerCallId);
+
+                // Log the full body to Super Logs with the specific reason in the title for visibility
+                const reason = body.call?.endedReason || body.message?.call?.endedReason || 'unknown';
+                await logDebug(sb, 'handle-campaign-webhook', `Call_Ended_Report (${reason})`, body);
             }
         }
 
         return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
     } catch (e: any) {
+        const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+        await logDebug(sb, 'handle-campaign-webhook', 'Webhook_Global_Error', {}, undefined, e);
         console.error('Webhook Error:', e);
         return new Response(JSON.stringify({ error: e.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }

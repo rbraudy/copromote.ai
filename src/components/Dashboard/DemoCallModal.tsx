@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Phone, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface DemoCallModalProps {
     isOpen: boolean;
@@ -8,6 +9,7 @@ interface DemoCallModalProps {
 }
 
 export const DemoCallModal: React.FC<DemoCallModalProps> = ({ isOpen, onClose }) => {
+    const { companyId } = useAuth();
     const [phone, setPhone] = useState('');
     const [customerName, setCustomerName] = useState('');
     const [isCalling, setIsCalling] = useState(false);
@@ -60,7 +62,10 @@ export const DemoCallModal: React.FC<DemoCallModalProps> = ({ isOpen, onClose })
             }
 
             const { data, error } = await supabase.functions.invoke('make-warranty-call-v2', {
-                body: callBody
+                body: {
+                    ...callBody,
+                    companyId: companyId || undefined
+                }
             });
 
             if (error) {

@@ -1,10 +1,27 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { VAPI_TECHNICAL_GUARDRAILS } from "../_shared/vapi-guardrails.ts"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+// Advanced Debug Logger
+const logDebug = async (sb: any, functionName: string, errorType: string, payload: any, rawResponse?: string, error?: any) => {
+    try {
+        await sb.from('system_debug_logs').insert({
+            function_name: functionName,
+            error_type: errorType,
+            payload: payload,
+            raw_response: rawResponse,
+            stack_trace: error?.stack || error?.message,
+            metadata: { timestamp: new Date().toISOString() }
+        });
+    } catch (e) {
+        console.error('CRITICAL: Debug Logger Failed:', e);
+    }
+};
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -132,6 +149,18 @@ serve(async (req) => {
             }
         }
 
+        // SMART BRAND CLEANUP (Safe non-destructive replacement)
+        let companyName = lead.company_name || 'Portstyle';
+        const brandRegex = /Billy['’]s\s*Printers/gi;
+        const matchesBilly = (name: string) => brandRegex.test(name);
+        if (matchesBilly(companyName)) {
+            console.log(`[SECURITY] Detected legacy "Billy" branding in lead data. Forcing fallback.`);
+            companyName = "Henry's"; // Safe fallback for this environment
+        }
+
+        let processedPrompt = systemPrompt;
+        processedPrompt = processedPrompt.replace(brandRegex, companyName);
+
         const callBody = {
             phoneNumberId: selectedPhoneNumberId,
             customer: {
@@ -139,36 +168,13 @@ serve(async (req) => {
                 name: `${lead.first_name} ${lead.last_name}`.trim()
             },
             assistant: {
-                firstMessage: `Hi, this is Catherine, Portstyle's AI Sales Agent. Is ${lead.first_name || 'the manager'} available?`,
+                firstMessage: `Hi!, Is ${lead.first_name || 'the manager'} there?`,
                 model: {
-                    provider: "openai",
+                    provider: "openai", // Reverted for stability
                     model: "gpt-4o-mini",
-                    messages: [
-                        {
-                            role: "system",
-                            content: systemPrompt
-                        }
-                    ],
-                    functions: [
-                        {
-                            name: "sendSms",
-                            description: "Send a text message with the promotion link to the customer.",
-                            parameters: {
-                                type: "object",
-                                properties: {
-                                    phoneNumber: {
-                                        type: "string",
-                                        description: "The customer's phone number to text (e.g. +15550000000)."
-                                    },
-                                    message: {
-                                        type: "string",
-                                        description: `The message content to send. MUST include the link: ${shareUrl || 'the promotion link'}`
-                                    }
-                                },
-                                required: ["phoneNumber", "message"]
-                            }
-                        }
-                    ]
+                    messages: [{ role: "system", content: `${VAPI_TECHNICAL_GUARDRAILS}\n\n${processedPrompt}` }],
+                    temperature: 0.7,
+                    maxTokens: 1000
                 },
                 transcriber: {
                     provider: "deepgram",
@@ -176,25 +182,55 @@ serve(async (req) => {
                     language: "en"
                 },
                 voice: {
-                    provider: "11labs",
-                    voiceId: "jBzLvP03992lMFEkj2kJ"
+                    provider: "vapi",
+                    voiceId: "Emma",
+                    speed: 1.0
                 },
+                firstMessageMode: "assistant-waits-for-user",
+                silenceTimeoutSeconds: 15,
+                analysisPlan: {
+                    summaryPlan: { enabled: false },
+                    successEvaluationPlan: { enabled: false },
+                    structuredDataPlan: { enabled: false }
+                },
+                functions: [
+                    {
+                        name: "sendSms",
+                        description: "Send a text message with the promotion link to the customer.",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                phoneNumber: { type: "string", description: "The customer's phone number to text (e.g. +15550000000)." },
+                                padding_link_field: { type: "string" },
+                                message: { type: "string", description: `The message content to send. MUST include the link: ${shareUrl || 'the promotion link'}` }
+                            },
+                            required: ["phoneNumber", "message"]
+                        }
+                    }
+                ],
                 serverUrl: Deno.env.get('SUPABASE_URL') + '/functions/v1/handle-call-webhook-v2'
             }
-        }
+        };
 
-        const vapiResponse = await fetch('https://api.vapi.ai/call', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${vapiPrivateKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(callBody)
-        })
+        let vapiResponse;
+        try {
+            vapiResponse = await fetch('https://api.vapi.ai/call/phone', { // Standardized URL
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${vapiPrivateKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(callBody)
+            })
 
-        if (!vapiResponse.ok) {
-            const errText = await vapiResponse.text()
-            throw new Error(`Vapi API Error: ${vapiResponse.status} ${errText}`)
+            if (!vapiResponse.ok) {
+                const errText = await vapiResponse.text()
+                await logDebug(supabase, 'make-call-v2', 'Vapi_API_Error', callBody, errText);
+                throw new Error(`Vapi API Error: ${vapiResponse.status} ${errText}`)
+            }
+        } catch (e: any) {
+            await logDebug(supabase, 'make-call-v2', 'Fetch_Failure', callBody, undefined, e);
+            throw e;
         }
 
         const vapiData = await vapiResponse.json()

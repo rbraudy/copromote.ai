@@ -9,6 +9,7 @@ import { CampaignBuilder } from './Admin/CampaignBuilder'; // Import CampaignBui
 import { Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { EditProspectModal } from './EditProspectModal';
 import { CompanySwitcher } from './Admin/CompanySwitcher';
+import { useAuth } from '../../contexts/AuthContext';
 
 const getStatusColor = (status: string) => {
     switch (status) {
@@ -43,6 +44,7 @@ interface Prospect {
 }
 
 export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
+    const { companyId } = useAuth();
     const [activeTab, setActiveTab] = useState<'prospects' | 'analytics' | 'campaign'>('prospects');
     const [prospects, setProspects] = useState<Prospect[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -184,6 +186,7 @@ export const WarrantyDashboard: React.FC<{ user: User }> = ({ user }) => {
         try {
             const { data, error } = await supabase.functions.invoke('make-warranty-call-v2', {
                 body: {
+                    companyId: user?.id ? companyId : undefined, // Explicitly pass the resolved context
                     prospectId: prospect.id,
                     phone: prospect.phone,
                     customerName: prospect.customer_name,

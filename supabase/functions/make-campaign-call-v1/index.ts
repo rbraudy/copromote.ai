@@ -2,12 +2,29 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { VAPI_TECHNICAL_GUARDRAILS } from "../_shared/vapi-guardrails.ts"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
+
+// Advanced Debug Logger
+const logDebug = async (sb: any, functionName: string, errorType: string, payload: any, rawResponse?: string, error?: any) => {
+    try {
+        await sb.from('system_debug_logs').insert({
+            function_name: functionName,
+            error_type: errorType,
+            payload: payload,
+            raw_response: rawResponse,
+            stack_trace: error?.stack || error?.message,
+            metadata: { timestamp: new Date().toISOString() }
+        });
+    } catch (e) {
+        console.error('CRITICAL: Debug Logger Failed:', e);
+    }
+};
 
 serve(async (req: Request) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -18,13 +35,18 @@ serve(async (req: Request) => {
         const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
         // 1. Resolve Inputs (Support both Prospect ID and Manual Test Data)
-        const { prospectId, companyId: forcedCompanyId, testData, configOverrides } = body;
+        const { prospectId, testData, configOverrides } = body;
 
-        let companyId = forcedCompanyId;
+        // 1. Resolve Company Context
+        // [PRIORITY] Explicit body.companyId > Prospect's company_id > Fallback
+        let companyId = body.companyId;
+
         if (prospectId && !companyId) {
             const { data: p } = await sb.from('warranty_prospects').select('company_id').eq('id', prospectId).single();
             if (p) companyId = p.company_id;
         }
+
+        console.log(`[DEBUG] Resolved Company Context: ${companyId || 'NULL'}`);
 
         if (!companyId) throw new Error('Company context not found');
 
@@ -101,11 +123,25 @@ serve(async (req: Request) => {
 
         // 5. Construct Prompt
         const { data: template } = await sb.from('call_templates').select('system_prompt').eq('company_id', companyId).single();
-        // Use drafted raw script if available in overrides, else DB template
-        let systemPrompt = (configOverrides && config.system_prompt_override) || template?.system_prompt || "You are a sales agent.";
+        // SCRIPT PRIORITY: Manual template (call_templates) > Generated override (campaign_configs)
+        let systemPrompt = template?.system_prompt || config?.system_prompt_override || "You are a sales agent.";
+
+        const { data: company } = await sb.from('companies').select('name').eq('id', companyId).single();
+        let companyName = company?.name || 'Henry\'s';
+
+        // NEGATIVE BRAND FILTER (Anti-Billy Fail-safe)
+        // If the database itself is returning "Billy", we know it's legacy data for this tenant.
+        const matchesBilly = (name: string) => /Billy['’]s\s*Printers/gi.test(name);
+        if (matchesBilly(companyName)) {
+            console.log(`[SECURITY] Detected legacy "Billy" branding in DB for campaign ID ${companyId}. Forcing "Henry's" fallback.`);
+            companyName = "Henry's";
+        }
 
         const variables = {
             customer_name: firstName,
+            customer_first_name: firstName,
+            company_name: companyName,
+            brand_name: companyName,
             product_name: productName,
             product_value: purchaseAmount.toFixed(2),
             warranty_price_1yr: price1yr.toString(),
@@ -115,12 +151,26 @@ serve(async (req: Request) => {
             agent_name: config.agent_behavior?.agent_name || 'Claire'
         };
 
+        console.log(`[DEBUG] Initial System Prompt (len): ${systemPrompt.length}`);
+
+        // Standard Substitution (Case-Insensitive Fail-safe)
         Object.entries(variables).forEach(([key, val]) => {
-            systemPrompt = systemPrompt.replace(new RegExp(`{{${key}}}`, 'g'), val);
+            const safeVal = String(val || "");
+            systemPrompt = systemPrompt.replace(new RegExp(`{{${key}}}`, 'gi'), safeVal);
+            firstMessage = firstMessage.replace(new RegExp(`{{${key}}}`, 'gi'), safeVal);
         });
 
+        console.log(`[DEBUG] final Variables:`, JSON.stringify(variables));
+        console.log(`[DEBUG] Post-Substitution System Prompt (start): ${systemPrompt.substring(0, 100)}...`);
+
+        // SMART BRAND CLEANUP (Safe non-destructive replacement)
+        const brandRegex = /Billy['’]s\s*Printers/gi;
+        systemPrompt = systemPrompt.replace(brandRegex, companyName);
+
+        let firstMessage = `Hi!, Is ${firstName || 'there'} there?`;
+        firstMessage = firstMessage.replace(brandRegex, companyName);
+
         // 6. Initiate Call via Vapi
-        // Canadian Number Logic
         // Canadian Number Logic
         const caCodes = ['204', '226', '236', '249', '250', '289', '306', '343', '365', '403', '416', '418', '431', '437', '438', '450', '506', '514', '519', '548', '579', '581', '587', '604', '613', '639', '647', '672', '705', '709', '778', '780', '782', '807', '819', '825', '867', '873', '902', '905'];
         // @ts-ignore
@@ -145,55 +195,78 @@ serve(async (req: Request) => {
         const payload = {
             phoneNumberId: phoneId,
             customer: { number: tel, name: firstName },
+            metadata: { prospectId, companyId },
             assistant: {
+                firstMessage: firstMessage,
+                firstMessageMode: "assistant-waits-for-user",
+                silenceTimeoutSeconds: 15,
                 model: {
-                    provider: "openai",
-                    model: "gpt-4",
-                    messages: [{ role: "system", content: systemPrompt }],
-                    maxTokens: 200, // Optimize latency
-                    functions: [
-                        { name: "sendSms", description: "Send text", parameters: { type: "object", properties: { phoneNumber: { type: "string" }, message: { type: "string" } }, required: ["phoneNumber", "message"] } },
-                        { name: "reportIssue", description: "Report issue", parameters: { type: "object", properties: { issueType: { type: "string", enum: ["not_received", "damaged", "wrong_item", "returned", "waiting_for_delivery", "other"] }, description: { type: "string" } }, required: ["issueType", "description"] } }
-                    ]
+                    provider: "openai", // Reverted for stability
+                    model: "gpt-4o-mini",
+                    messages: [{ role: "system", content: `${VAPI_TECHNICAL_GUARDRAILS}\n\n${systemPrompt}` }],
+                    temperature: 0.7,
+                    maxTokens: 1000
+                },
+                startSpeakingPlan: {
+                    waitSeconds: 0.1, // Stable snappiness
+                    smartEndpointingPlan: {
+                        provider: "vapi"
+                    },
+                    transcriptionEndpointingPlan: {
+                        onNoPunctuationSeconds: 0.2, // Stable thresholds
+                        onPunctuationSeconds: 0.1,
+                        onNumberSeconds: 0.3
+                    }
+                },
+                stopSpeakingPlan: {
+                    numWords: 0,
+                    voiceSeconds: 0.2,
+                    backoffSeconds: 0.5
                 },
                 voice: {
-                    provider: "11labs",
-                    voiceId: config.agent_behavior?.voice_id === 'josh' ? "soYjpn8hCmarWqRjtvMN" : (config.agent_behavior?.voice_id === 'paige' ? "jBzLvP03992lMFEkj2kJ" : "EXAVITQu4vr4xnSDxMaL"),
-                    model: "eleven_turbo_v2_5",
-                    stability: 0.35,
-                    similarityBoost: 0.65,
-                    style: 0.45,
+                    provider: "vapi",
+                    voiceId: "Emma",
                     speed: 1.0
                 },
                 transcriber: {
                     provider: "deepgram",
                     model: "nova-2",
                     language: "en",
-                    endpointing: 200
+                    endpointing: 250
                 },
-                firstMessageMode: "assistant-waits-for-user",
-                firstMessage: `Hi, is this ${firstName}?`,
+                functions: [
+                    { name: "sendSms", description: "Send text", parameters: { type: "object", properties: { phoneNumber: { type: "string" }, message: { type: "string" } }, required: ["phoneNumber", "message"] } },
+                    { name: "reportIssue", description: "Report issue", parameters: { type: "object", properties: { issueType: { type: "string", enum: ["not_received", "damaged", "wrong_item", "returned", "waiting_for_delivery", "other"] }, description: { type: "string" } }, required: ["issueType", "description"] } },
+                    { name: "offerDiscount", description: "Apply a discount to the price", parameters: { type: "object", properties: { newPrice: { type: "number" } }, required: ["newPrice"] } }
+                ],
                 backgroundSound: "off",
-                // Use a dedicated webhook for campaign calls to avoid polluting warranty logic
-                // Add timestamp to prevent caching issues
-                serverUrl: `https://tikocqefwifjcfhgqdyj.supabase.co/functions/v1/handle-campaign-webhook?t=${Date.now()}`
+                fillersEnabled: true, // Re-enabled for stability
+                backchannelingEnabled: true,
+                serverUrl: 'https://tikocqefwifjcfhgqdyj.supabase.co/functions/v1/handle-campaign-webhook'
             }
         };
 
         console.log('Initiating Call to:', tel);
 
-        const vapiRes = await fetch('https://api.vapi.ai/call/phone', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + privateKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
+        let vapiRes;
+        try {
+            vapiRes = await fetch('https://api.vapi.ai/call/phone', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + privateKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
 
-        if (!vapiRes.ok) {
-            const err = await vapiRes.text();
-            throw new Error(`Vapi API Error: ${err}`);
+            if (!vapiRes.ok) {
+                const errText = await vapiRes.text();
+                await logDebug(sb, 'make-campaign-call-v1', 'Vapi_API_Error', payload, errText);
+                throw new Error(`Vapi API Error: ${errText}`);
+            }
+        } catch (e: any) {
+            await logDebug(sb, 'make-campaign-call-v1', 'Fetch_Failure', payload, undefined, e);
+            throw e;
         }
 
         const vapiData = await vapiRes.json();

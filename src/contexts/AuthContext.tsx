@@ -81,8 +81,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signOut = async () => {
-        await supabase.auth.signOut();
-        // State updates handled by onAuthStateChange
+        try {
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.error('Error during signOut:', error);
+        } finally {
+            // Force state reset and redirect regardless of success
+            setSession(null);
+            setUser(null);
+            setRole(null);
+            setCompanyId(null);
+            setImpersonatedCompanyId(null);
+            setLoading(false);
+            window.location.href = '/';
+        }
     };
 
     const isSuperAdmin = role === 'superadmin' || user?.email === 'rbraudy@gmail.com';
