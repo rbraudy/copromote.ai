@@ -11,7 +11,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onSignInClick, onSignUpClick }) => {
     const { theme, toggleTheme } = useTheme();
-    const { user, role, signOut } = useAuth();
+    const { user, signOut } = useAuth();
     const { tenant } = useTenant();
 
     const handleSignOut = async () => {
@@ -52,11 +52,7 @@ const Header: React.FC<HeaderProps> = ({ onSignInClick, onSignUpClick }) => {
                                 <User size={16} />
                                 {user?.email}
                             </span>
-                            {(role === 'admin' || role === 'superadmin') && (
-                                <a href="/settings" className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-md text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                                    Settings
-                                </a>
-                            )}
+
                             <button
                                 onClick={handleSignOut}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all border border-transparent hover:border-red-200 dark:hover:border-red-900/30"
