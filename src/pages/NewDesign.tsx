@@ -9,11 +9,7 @@ import Header from '../components/Layout/Header';
 import SignInModal from '../components/Auth/SignInModal';
 // import SignUpModal from '../components/Auth/SignUpModal'; // Keeping for reference
 import WarrantySignUpModal from '../components/Auth/WarrantySignUpModal';
-import { DemoCallModal } from '../components/Dashboard/DemoCallModal';
-import { CampaignBuilder } from '../components/Dashboard/Admin/CampaignBuilder';
-import { LiveQueue } from '../components/Dashboard/Admin/LiveQueue';
-import { AdminAnalytics } from '../components/Dashboard/Admin/AdminAnalytics';
-import { CompanySwitcher } from '../components/Dashboard/Admin/CompanySwitcher';
+
 
 const NewDesign = () => {
     const [activeTab, setActiveTab] = useState('campaign');
@@ -22,7 +18,7 @@ const NewDesign = () => {
     // Restoring local state for Modals
     const [isSignInOpen, setIsSignInOpen] = useState(false);
     const [isSignUpOpen, setIsSignUpOpen] = useState(false);
-    const [isDemoOpen, setIsDemoOpen] = useState(false);
+
 
     if (authLoading) {
         return (
@@ -35,10 +31,12 @@ const NewDesign = () => {
         );
     }
 
+    if (!user) {
+        setIsSignInOpen(true);
+    }
+
     const handleViewDemo = () => {
-        if (user) {
-            setIsDemoOpen(true);
-        } else {
+        if (!user) {
             setIsSignInOpen(true);
         }
     };
@@ -94,7 +92,6 @@ const NewDesign = () => {
             />
             <WarrantySignUpModal isOpen={isSignUpOpen} onClose={() => setIsSignUpOpen(false)} />
             {/* <SignUpModal isOpen={isSignUpOpen} onClose={() => setIsSignUpOpen(false)} /> */}
-            <DemoCallModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
 
             {/* Value Prop Grid */}
             <section id="features" className="py-24 border-t border-white/5 bg-slate-950">
@@ -175,11 +172,8 @@ const NewDesign = () => {
                                     Analytics
                                 </button>
                             </div>
-                            <CompanySwitcher />
-                        </div>
 
-                        {/* Content Area */}
-                        <div className="min-h-[500px] relative">
+                            {/* Content Area */}
                             {!user && (
                                 <div className="absolute -top-12 right-0 bg-blue-600/20 border border-blue-500/30 text-blue-200 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2">
                                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
@@ -187,9 +181,9 @@ const NewDesign = () => {
                                 </div>
                             )}
 
-                            {activeTab === 'campaign' && <CampaignBuilder demoMode={!user} />}
-                            {activeTab === 'queue' && <LiveQueue demoMode={!user} />}
-                            {activeTab === 'analytics' && <AdminAnalytics demoMode={!user} />}
+                            {activeTab === 'campaign' && <div className="text-center py-20">Campaign Builder Placeholder</div>}
+                            {activeTab === 'queue' && <div className="text-center py-20">Live Queue Placeholder</div>}
+                            {activeTab === 'analytics' && <div className="text-center py-20">Admin Analytics Placeholder</div>}
 
                             {!user && (
                                 <div className="mt-8 p-4 bg-slate-900/80 border border-slate-800 rounded-xl flex items-center justify-between backdrop-blur-sm">

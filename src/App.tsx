@@ -8,7 +8,10 @@ import Footer from './components/Layout/Footer';
 import SignInModal from './components/Auth/SignInModal';
 // import SignUpModal from './components/Auth/SignUpModal'; // Keeping for reference/future use
 import WarrantySignUpModal from './components/Auth/WarrantySignUpModal';
-import { WarrantyDashboard } from './components/Dashboard/WarrantyDashboard';
+import ProductCatalog from './components/Dashboard/ProductCatalog';
+import { Leads } from './components/Dashboard/Leads';
+import { ProposalsList } from './components/Dashboard/ProposalsList';
+import { PartnerPortal } from './components/External/PartnerPortal';
 import NewDesign from './pages/NewDesign';
 import HelpFeatures from './pages/HelpFeatures';
 import HelpPricing from './pages/HelpPricing';
@@ -19,6 +22,7 @@ function DashboardLayout() {
     const { user, loading } = useAuth(); // Use Supabase Auth Hook
     const [isSignInOpen, setIsSignInOpen] = useState(false);
     const [isSignUpOpen, setIsSignUpOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<'products' | 'partners' | 'proposals'>('products');
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -33,9 +37,35 @@ function DashboardLayout() {
                     </div>
                 ) : user ? (
                     <div className="container mx-auto px-4 pt-24 pb-8">
-                        {/* We cast to any because WarrantyDashboard expects a Firebase User (for now) */}
-                        {/* But Supabase User is compatible enough for now, we'll fix WarrantyDashboard next */}
-                        <WarrantyDashboard user={user as any} />
+                        {/* Dashboard Tabs */}
+                        <div className="flex gap-4 mb-6 border-b">
+                            <button
+                                onClick={() => setActiveTab('products')}
+                                className={`pb-2 px-4 ${activeTab === 'products' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
+                            >
+                                My Products
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('partners')}
+                                className={`pb-2 px-4 ${activeTab === 'partners' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
+                            >
+                                Partners
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('proposals')}
+                                className={`pb-2 px-4 ${activeTab === 'proposals' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
+                            >
+                                Proposals
+                            </button>
+                        </div>
+
+                        {activeTab === 'products' ? (
+                            <ProductCatalog user={user as any} />
+                        ) : activeTab === 'partners' ? (
+                            <Leads user={user as any} />
+                        ) : (
+                            <ProposalsList user={user as any} />
+                        )}
                     </div>
                 ) : (
                     <NewDesign />
@@ -68,6 +98,7 @@ function App() {
                         <Route path="/henrys/pricing" element={<HelpPricing />} />
                         <Route path="/henrys/checkout" element={<HelpCheckout />} />
                         <Route path="/settings" element={<Settings />} />
+                        <Route path="/partner/:leadId" element={<PartnerPortal />} />
                         <Route path="/*" element={<DashboardLayout />} />
                     </Routes>
                 </BrowserRouter>

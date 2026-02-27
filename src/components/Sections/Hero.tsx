@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { DemoCallModal } from '../Dashboard/DemoCallModal';
+import React from 'react';
+
 
 interface HeroProps {
     onSignUpClick: () => void;
 }
 
 const Hero: React.FC<HeroProps> = ({ onSignUpClick }) => {
-    const [isDemoOpen, setIsDemoOpen] = useState(false);
     return (
         <section className="bg-hero-gradient pt-32 pb-24 text-center">
             <div className="max-w-4xl mx-auto px-6">
@@ -31,7 +30,7 @@ const Hero: React.FC<HeroProps> = ({ onSignUpClick }) => {
                     </button>
                 </div>
 
-                <DemoCallModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
+
 
                 {/* Placeholder Image/Mockup */}
                 <div className="mt-20">
